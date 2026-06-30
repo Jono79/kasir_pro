@@ -252,8 +252,13 @@ document.addEventListener('keydown',e=>{
 // ============= V5: UPDATE goPage for new pages =============
 const _goPageV4=goPage;
 goPage=function(id,btn){
-  const pages=['home','kasir','stok','hutang','laporan','tutup','pengaturan','supplier','pembelian','pengeluaran','riwayatStok','opname','pelanggan','kaskecil','retur','bundling'];
-  const ownerOnly=['tutup','laporan','pengaturan'];
+  const pages=['home','kasir','stok','hutang','laporan','tutup','pengaturan','supplier','pembelian','pengeluaran','riwayatStok','opname','pelanggan','kaskecil','retur','bundling','activitylog'];
+  // BUG FIX: 'activitylog' sebelumnya hilang dari ownerOnly di sini — efeknya
+  // halaman Log Aktivitas TETAP TAMPIL (karena toggle class generik di bawah
+  // tetap jalan) tapi isinya selalu kosong, karena renderActivityLog() tidak
+  // pernah terpanggil (tidak ada di percabangan if-else versi aktif ini).
+  // Ini override fungsi terakhir yang dimuat (lihat 02-auth.js untuk versi awal).
+  const ownerOnly=['tutup','laporan','pengaturan','activitylog'];
   const stokAccess=['stok','opname','riwayatStok','pembelian','supplier','bundling'];
   if(ownerOnly.includes(id)&&me&&me.role!=='owner'){showNotif('⚠ Hanya untuk Pemilik',1);return;}
   if(stokAccess.includes(id)&&me&&me.role==='kasir'){showNotif('⚠ Hanya Pemilik atau Manajer Stok',1);return;}
@@ -268,6 +273,7 @@ goPage=function(id,btn){
   else if(id==='laporan')renderLaporan();
   else if(id==='tutup')renderTutup();
   else if(id==='pengaturan')renderSett();
+  else if(id==='activitylog')renderActivityLog();
   else if(id==='supplier')renderSupplier();
   else if(id==='pembelian')renderPembelian();
   else if(id==='pengeluaran')renderPengeluaran();
