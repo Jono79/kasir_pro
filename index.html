@@ -1,0 +1,1122 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#1b4332" id="themeColorMeta">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Kasir Pro">
+<link rel="manifest" href="manifest.json">
+<title>Kasir Warung Pro</title>
+<meta name="app-version" content="10.1.0">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- PWA Install Banner -->
+<div class="pwa-banner" id="pwaBanner">
+  <div><p>📱 Install Kasir Warung Pro</p><small>Bisa dipakai tanpa internet, tanpa Play Store!</small></div>
+  <div class="pwa-btns">
+    <button class="pwa-install" onclick="installPWA()">⬇ Install Sekarang</button>
+    <button class="pwa-dismiss" onclick="document.getElementById('pwaBanner').classList.remove('show')">Nanti</button>
+  </div>
+</div>
+
+<!-- UPDATE BANNER -->
+<div id="updateBanner">
+  <div class="ub-text">
+    <div class="ub-title">🆕 Ada versi baru tersedia!</div>
+    <div class="ub-sub" id="updateBannerSub">Tap untuk update — data kamu tetap aman</div>
+  </div>
+  <div class="ub-btns">
+    <button class="ub-ok" onclick="lakukanUpdate()">Update Sekarang</button>
+    <button class="ub-skip" onclick="document.getElementById('updateBanner').classList.remove('show')">Nanti</button>
+  </div>
+</div>
+
+<!-- LOGIN -->
+<div id="loginScreen">
+  <div class="lcard">
+    <div class="llogo"><div class="li" id="loginLogo">🛒</div><h1>Kasir Warung Pro</h1><p>Pilih akun & masukkan PIN</p></div>
+    <div class="upills" id="upills"></div>
+    <div class="pinwrap"><label>PIN</label><input type="password" id="pinInput" placeholder="••••" maxlength="6" oninput="errClear()" onkeydown="if(event.key==='Enter')doLogin()"></div>
+    <button class="btnlogin" onclick="doLogin()">Masuk →</button>
+    <div class="lerr" id="lerr"></div>
+  </div>
+</div>
+
+<div class="notif" id="notif"></div>
+<div class="stok-alert-popup" id="stokAlertPopup">
+  <span id="stokAlertMsg">⚠ Stok hampir habis!</span>
+  <button onclick="document.getElementById('stokAlertPopup').classList.remove('show')" style="background:none;border:none;color:#fff;font-size:18px;cursor:pointer">✕</button>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="topbar">
+    <button class="btn-menu" onclick="toggleSidebar()">☰</button>
+    <div class="topbar-title"><span id="topLogo">🛒</span> Warung <span class="topNamaSpan" id="topNama">Pro</span></div>
+    <div class="topbar-jam" id="jamDisp">00:00</div>
+    <div class="topbar-omzet">Omzet<strong id="omzetDisp">Rp 0</strong></div>
+  </div>
+
+  <div class="sidebar-overlay" id="sbOverlay" onclick="closeSidebar()"></div>
+  <div class="sidebar" id="sidebar">
+    <div class="sb-head">
+      <div class="sb-user">
+        <div class="sb-ico" id="sbIco">👤</div>
+        <div class="sb-info"><div class="sbn" id="sbNama">-</div><div class="sbr" id="sbRole">-</div></div>
+      </div>
+    </div>
+    <div class="sb-nav">
+      <button class="sb-item" id="mnuHome" onclick="goPage('home',this)"><span class="si">🏠</span> Beranda</button>
+      <button class="sb-item active" id="mnuKasir" onclick="goPage('kasir',this)"><span class="si">🏪</span> Kasir</button>
+      <button class="sb-item stok-only" id="mnuStok" onclick="goPage('stok',this)"><span class="si">📦</span> Stok & Produk</button>
+      <button class="sb-item stok-only" id="mnuBundling" onclick="goPage('bundling',this)"><span class="si">🎁</span> Produk Paket</button>
+      <button class="sb-item" id="mnuHutang" onclick="goPage('hutang',this)"><span class="si">💳</span> Hutang</button>
+      <button class="sb-item stok-only" id="mnuSupplier" onclick="goPage('supplier',this)"><span class="si">🏭</span> Supplier</button>
+      <button class="sb-item stok-only" id="mnuBeli" onclick="goPage('pembelian',this)"><span class="si">🛍</span> Pembelian Barang</button>
+      <button class="sb-item" id="mnuKas" onclick="goPage('pengeluaran',this)"><span class="si">💸</span> Pengeluaran Kas</button>
+      <button class="sb-item" id="mnuKasKecil" onclick="goPage('kaskecil',this)"><span class="si">💰</span> Kas Kecil</button>
+      <button class="sb-item" id="mnuPelanggan" onclick="goPage('pelanggan',this)"><span class="si">⭐</span> Pelanggan & Poin</button>
+      <button class="sb-item" id="mnuRetur" onclick="goPage('retur',this)"><span class="si">🔄</span> Retur Barang</button>
+      <div class="sb-divider"></div>
+      <button class="sb-item owner-only" id="mnuLaporan" onclick="goPage('laporan',this)"><span class="si">📊</span> Laporan <span class="badge-alert" id="stokAlertBadge" style="display:none"></span></button>
+      <button class="sb-item owner-only" id="mnuTutup" onclick="goPage('tutup',this)"><span class="si">🔒</span> Tutup Kasir</button>
+      <button class="sb-item owner-only" id="mnuSett" onclick="goPage('pengaturan',this)"><span class="si">⚙️</span> Pengaturan</button>
+      <button class="sb-item owner-only" id="mnuLog" onclick="goPage('activitylog',this)"><span class="si">📜</span> Log Aktivitas</button>
+      <div class="sb-divider owner-only"></div>
+      <button class="sb-item owner-only" onclick="kirimWA();closeSidebar()"><span class="si">📱</span> Alert Stok WA</button>
+      <button class="sb-item owner-only" onclick="eksporCSV();closeSidebar()"><span class="si">⬇</span> Export CSV</button>
+    </div>
+    <div class="sb-foot">
+      <button class="btn-logout" onclick="doLogout()"><span class="si">⏏</span> Keluar</button>
+    </div>
+  </div>
+
+  <div class="pages">
+
+    <!-- KASIR -->
+    <div class="page active" id="page-kasir">
+      <div class="kasir-wrap">
+        <div class="produk-side">
+          <div id="shiftBar" class="shift-bar" style="display:none">
+            <div class="sb-info">⏱ Shift aktif · <span id="shiftMulaiLabel"></span></div>
+            <div class="shift-bar .sb-timer" id="shiftTimer">00:00</div>
+            <button class="sb-btn" onclick="akhiriShift()">Akhiri</button>
+          </div>
+          <div class="hold-bar">
+            <span class="hold-lbl">Antrian:</span>
+            <div id="holdSlots" style="display:flex;gap:5px;"></div>
+            <button class="hnew" onclick="holdKeranjang()">⏸ Tahan</button>
+          </div>
+          <div id="favBar" class="fav-bar" style="display:none">
+            <span class="fav-lbl">⭐ Favorit:</span>
+            <div id="favChips" style="display:flex;gap:5px;"></div>
+          </div>
+          <div class="search-area">
+            <div class="search-main">
+              <span class="sico">🔍</span>
+              <input type="text" id="searchP" placeholder="Ketik nama barang..." oninput="renderProduk()" autocomplete="off">
+              <button class="btn-clr" onclick="clearSearch()">✕</button>
+              <button class="btn-scan" onclick="bukaScanner()">📷</button>
+            </div>
+          </div>
+          <div class="filter-row" id="filterRow"></div>
+          <div class="sort-row" id="sortRow">
+            <span class="sort-lbl">Urutkan:</span>
+            <button class="spill active" id="sortDefault" onclick="setSortMode('default')">📋 Default</button>
+            <button class="spill" id="sortAZ" onclick="setSortMode('az')">🔤 A–Z</button>
+            <button class="spill" id="sortTerlaris" onclick="setSortMode('terlaris')">🔥 Terlaris</button>
+          </div>
+          <div class="pgrid" id="pgrid"></div>
+        </div>
+      </div>
+
+      <button class="fab-cart" onclick="bukaKeranjang()">🛒<span class="fab-count" id="fabCount">0</span></button>
+      <div class="k-overlay" id="kOverlay" onclick="tutupKeranjang()"></div>
+      <div class="keranjang-sheet" id="keranjangSheet">
+        <div class="ksheet-handle" onclick="tutupKeranjang()"></div>
+        <div class="khead">
+          <span class="khead-title">🛍 Keranjang</span>
+          <span class="kbadge" id="kbadge">0</span>
+          <button onclick="bukaM('mPilihPelanggan')" style="background:var(--ol);border:1.5px solid var(--o);color:#92400e;border-radius:7px;padding:4px 8px;font-size:11px;font-weight:700;cursor:pointer;margin:0 4px" id="btnPilihPel">🎁 Pelanggan</button>
+          <button class="khead-close" onclick="tutupKeranjang()">✕</button>
+        </div>
+        <div id="pelangganTerpilihBar" style="display:none;background:linear-gradient(135deg,#fef3c7,#fde68a);border-bottom:1px solid #f59e0b;padding:6px 14px;font-size:11px;font-weight:700;color:#92400e;align-items:center;justify-content:space-between;flex-shrink:0">
+          <span>🎁 <span id="pelangganTerpilihNama">-</span> · <span id="pelangganTerpilihPoin">0 poin</span></span>
+        </div>
+        <div class="kitems" id="kitems"><div class="kempty"><div class="ei">🛒</div><p>Belum ada produk</p></div></div>
+        <div class="kfoot">
+          <div id="poinRedeemRow" class="poin-redeem-row" style="display:none">
+            <div class="prl">🎁 Gunakan Poin Pelanggan</div>
+            <div style="display:flex;align-items:center;gap:6px">
+              <span class="prv" id="poinAvailDisp">0 poin</span>
+              <button style="padding:3px 8px;background:#d97706;color:#fff;border:none;border-radius:5px;font-size:10px;font-weight:700;cursor:pointer" onclick="redeemPoin()">Pakai</button>
+            </div>
+          </div>
+          <div class="metode-row" id="metodeRow">
+            <button class="metode-btn active" onclick="setMetode('tunai',this)">💵 Tunai</button>
+            <button class="metode-btn" onclick="setMetode('transfer',this)">🏦 Transfer</button>
+            <button class="metode-btn" onclick="setMetode('qris',this)">📲 QRIS</button>
+            <button class="metode-btn" onclick="setMetode('kredit',this)">💳 Kredit</button>
+          </div>
+          <div class="diskon-row">
+            <label>🏷 Diskon</label>
+            <div class="diskon-type">
+              <button id="btnDiskonPct" class="active" onclick="setDiskonType('pct')">%</button>
+              <button id="btnDiskonRp" onclick="setDiskonType('rp')">Rp</button>
+            </div>
+            <input type="number" class="diskon-val" id="diskonVal" placeholder="0" min="0" oninput="hitungDiskon()">
+          </div>
+          <div class="disc-quick-row">
+            <button class="disc-quick-btn" onclick="setDiskonCepat(5)">5%</button>
+            <button class="disc-quick-btn" onclick="setDiskonCepat(10)">10%</button>
+            <button class="disc-quick-btn" onclick="setDiskonCepat(15)">15%</button>
+            <button class="disc-quick-btn" onclick="setDiskonCepat(20)">20%</button>
+            <button class="disc-quick-btn" onclick="setDiskonCepat(50)">50%</button>
+          </div>
+          <div class="diskon-info" id="diskonInfo" style="display:none"><span>Hemat</span><span id="diskonJml">Rp 0</span></div>
+          <div class="ktotal-row"><span>Total Bayar</span><span id="totalDisp">Rp 0</span></div>
+          <input type="number" class="kbayar-input" id="uangBayar" placeholder="Uang bayar (Rp)" oninput="hitungKem()" min="0">
+          <div class="nomcepat" id="nomcepat"></div>
+          <div class="kembox" id="kembox" style="display:none">
+            <span class="kl">💵 Kembalian</span>
+            <span class="kv" id="kemDisp">Rp 0</span>
+          </div>
+          <div id="kemAnimBox" style="display:none" class="kem-anim">
+            <div class="ka-uang" id="kemAnimUang">💵</div>
+            <div class="ka-val" id="kemAnimVal"></div>
+            <div class="ka-label">Kembalian ke pelanggan</div>
+          </div>
+          <div class="kbtn-row">
+            <button class="btn-hold2" onclick="holdKeranjang()">⏸</button>
+            <button class="btn-clear2" onclick="clearK()">🗑</button>
+            <button class="btn-bayar" id="btnBayar" onclick="bukaBayar()" disabled>💳 Bayar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STOK -->
+    <div class="page" id="page-stok">
+      <div class="stok-wrap">
+        <div class="stok-toolbar">
+          <h2>📦 Produk</h2>
+          <button class="btn-p" onclick="bukaModalTambah()">+ Tambah</button>
+          <button class="btn-p" style="background:#d97706;" onclick="bukaRestok()">📥 Restok</button>
+          <button class="btn-sec" onclick="bukaM('mImportCSV')">📂 Import CSV</button>
+          <button class="btn-sec" onclick="goPage('opname',document.getElementById('mnuStok'))">📋 Opname</button>
+          <button class="btn-sec" onclick="goPage('riwayatStok',document.getElementById('mnuStok'))">📜 Riwayat</button>
+          <button class="btn-sec" onclick="eksporCSV()">⬇ CSV</button>
+        </div>
+        <!-- Search & Sort bar stok -->
+        <div style="display:flex;gap:6px;padding:8px 10px;background:var(--w);border-bottom:1.5px solid var(--brd);align-items:center;flex-shrink:0;flex-wrap:wrap;">
+          <div style="position:relative;flex:1;min-width:160px;">
+            <span style="position:absolute;left:9px;top:50%;transform:translateY(-50%);font-size:13px;color:var(--gray);pointer-events:none;">🔍</span>
+            <input id="stokSearch" type="text" placeholder="Cari nama / barcode..." oninput="renderStok()"
+              style="width:100%;padding:8px 10px 8px 30px;border:2px solid var(--brd);border-radius:9px;font-size:13px;font-family:inherit;outline:none;background:var(--inp);color:var(--txt);">
+          </div>
+          <button class="btn-scan" style="border-radius:9px;padding:8px 11px;" onclick="scanBarcodeStok()">📷</button>
+          <div style="display:flex;gap:4px;flex-shrink:0;">
+            <button id="sortBtn_laku" class="kpill active" onclick="setStokSort('laku')" title="Terlaris">🔥 Laku</button>
+            <button id="sortBtn_abjad" class="kpill" onclick="setStokSort('abjad')" title="A–Z">🔤 A–Z</button>
+            <button id="sortBtn_barcode" class="kpill" onclick="setStokSort('barcode')" title="Barcode">📦 Barcode</button>
+            <button id="sortBtn_stok" class="kpill" onclick="setStokSort('stok')" title="Stok terendah">📉 Stok</button>
+          </div>
+        </div>
+        <div id="alertS" style="display:none" class="alert-s"></div>
+        <div class="tblwrap">
+          <table>
+            <thead><tr><th>Nama</th><th>Kat</th><th>Harga</th><th>Stok</th><th>Aksi</th></tr></thead>
+            <tbody id="tblStok"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- STOK OPNAME -->
+    <div class="page" id="page-opname">
+      <div class="stok-wrap">
+        <div class="page-toolbar">
+          <button class="btn-sec" onclick="goPage('stok',document.getElementById('mnuStok'))">← Kembali</button>
+          <h2>📋 Stok Opname</h2>
+          <button class="btn-p" onclick="simpanOpname()">💾 Simpan</button>
+        </div>
+        <div style="padding:8px 12px;background:var(--ol);font-size:11px;color:#92400e;font-weight:600;flex-shrink:0;">Masukkan stok aktual. Biarkan kosong jika tidak berubah.</div>
+        <div class="page-body" id="opnameList"></div>
+      </div>
+    </div>
+
+    <!-- RIWAYAT STOK -->
+    <div class="page" id="page-riwayatStok">
+      <div class="stok-wrap">
+        <div class="page-toolbar">
+          <button class="btn-sec" onclick="goPage('stok',document.getElementById('mnuStok'))">← Kembali</button>
+          <h2>📜 Riwayat Stok</h2>
+        </div>
+        <div class="page-body" id="riwayatStokList"></div>
+      </div>
+    </div>
+
+    <!-- HUTANG -->
+    <div class="page" id="page-hutang">
+      <div class="hutang-wrap">
+        <div class="hutang-toolbar"><h2>💳 Hutang Pelanggan</h2><button class="btn-p" onclick="bukaM('mHutang')">+ Catat</button></div>
+        <div class="hut-total-bar"><span class="htl">💸 Total Hutang Belum Lunas</span><span class="htv" id="hutTotalDisp">Rp 0</span></div>
+        <div class="hutang-list" id="hutangList"></div>
+      </div>
+    </div>
+
+    <!-- SUPPLIER -->
+    <div class="page" id="page-supplier">
+      <div class="hutang-wrap">
+        <div class="hutang-toolbar"><h2>🏭 Supplier</h2><button class="btn-p" onclick="bukaM('mSupplier')">+ Tambah</button></div>
+        <div class="hutang-list" id="supplierList"></div>
+      </div>
+    </div>
+
+    <!-- PEMBELIAN -->
+    <div class="page" id="page-pembelian">
+      <div class="hutang-wrap">
+        <div class="hutang-toolbar"><h2>🛍 Pembelian Barang</h2><button class="btn-p" onclick="bukaPembelian()">+ Restok</button></div>
+        <div class="hutang-list" id="pembelianList"></div>
+      </div>
+    </div>
+
+    <!-- PENGELUARAN -->
+    <div class="page" id="page-pengeluaran">
+      <div class="hutang-wrap">
+        <div class="hutang-toolbar"><h2>💸 Pengeluaran Kas</h2><button class="btn-p" onclick="bukaM('mKas')">+ Catat</button></div>
+        <div class="kas-summary" id="kasSummary"></div>
+        <div class="hutang-list" id="pengeluaranList"></div>
+      </div>
+    </div>
+
+    <!-- TUTUP KASIR -->
+    <div class="page" id="page-tutup">
+      <div class="tutup-wrap">
+        <div class="tutup-toolbar"><h2>🔒 Tutup Kasir</h2><button class="btn-sec" onclick="renderTutup()">🔄</button></div>
+        <div class="tutup-body">
+          <div class="tutup-rekap" id="tutupRekap"></div>
+          <div class="stok-berubah" id="stokBerubah"></div>
+          <button class="btn-tutup-kasir" onclick="prosesTutupKasir()">🔒 Tutup & Simpan Rekap</button>
+          <button class="btn-wa-rekap" onclick="kirimRekapWA()">📱 Kirim ke WhatsApp</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- HOME DASHBOARD -->
+    <div class="page" id="page-home">
+      <div class="home-scroll">
+        <div class="home-header">
+          <div class="hh-sub" id="homeGreet">Selamat datang 👋</div>
+          <h2 id="homeNama">Kasir Warung Pro</h2>
+          <div class="hh-sub" id="homeTanggal"></div>
+        </div>
+        <div class="home-stats-row" id="homeStatsRow"></div>
+        <div class="home-section">
+          <h3>🎯 Target Omzet Hari Ini</h3>
+          <div class="target-card" id="targetCard"></div>
+        </div>
+        <div class="home-section">
+          <h3>⚡ Akses Cepat</h3>
+          <div class="quick-grid">
+            <div class="quick-btn" onclick="goPage('kasir',document.getElementById('mnuKasir'))"><div class="qb-ico">🛒</div><div class="qb-lbl">Kasir</div></div>
+            <div class="quick-btn" onclick="goPage('stok',document.getElementById('mnuStok'))"><div class="qb-ico">📦</div><div class="qb-lbl">Stok</div></div>
+            <div class="quick-btn" onclick="goPage('laporan',document.getElementById('mnuLaporan'))"><div class="qb-ico">📊</div><div class="qb-lbl">Laporan</div></div>
+            <div class="quick-btn" onclick="goPage('pelanggan',document.getElementById('mnuPelanggan'))"><div class="qb-ico">🎁</div><div class="qb-lbl">Pelanggan</div></div>
+            <div class="quick-btn" onclick="goPage('hutang',document.getElementById('mnuHutang'))"><div class="qb-ico">📋</div><div class="qb-lbl">Hutang</div></div>
+            <div class="quick-btn" onclick="goPage('pengeluaran',document.getElementById('mnuKas'))"><div class="qb-ico">💸</div><div class="qb-lbl">Pengeluaran</div></div>
+            <div class="quick-btn" onclick="goPage('bundling',document.getElementById('mnuBundling'))"><div class="qb-ico">🎁</div><div class="qb-lbl">Paket</div></div>
+            <div class="quick-btn" onclick="toggleShift()"><div class="qb-ico" id="homeShiftIco">⏱</div><div class="qb-lbl" id="homeShiftLbl">Mulai Shift</div></div>
+          </div>
+        </div>
+        <div class="home-section">
+          <h3>🕐 Transaksi Terakhir <button class="repeat-btn" onclick="repeatLastOrder()" style="font-size:10px">🔁 Ulangi</button></h3>
+          <div id="homeRecentList"></div>
+        </div>
+        <div class="home-section" id="homeStokAlertSec" style="display:none">
+          <h3>⚠️ Perlu Perhatian</h3>
+          <div id="homeStokAlertList"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- BUNDLING / PAKET -->
+    <div class="page" id="page-bundling">
+      <div class="hutang-wrap">
+        <div class="hutang-toolbar"><h2>🎁 Produk Paket</h2><button class="btn-p" onclick="bukaM('mBundling')">+ Buat Paket</button></div>
+        <div style="padding:8px 10px;background:var(--ol);font-size:11px;color:#92400e;font-weight:600;flex-shrink:0;">
+          💡 Bundling = beberapa produk dijual satu harga paket. Muncul di kasir seperti produk biasa.
+        </div>
+        <div class="hutang-list" id="bundlingList"></div>
+      </div>
+    </div>
+
+
+    <div class="page" id="page-laporan">
+      <div class="lap-wrap">
+        <div class="lap-toolbar">
+          <h2>📊 Laporan</h2>
+          <button class="btn-sec" onclick="eksporRekapWA()">📱</button>
+          <button class="btn-sec" onclick="resetLaporan()">Reset</button>
+        </div>
+        <div class="tab-row">
+          <button class="tab-btn active" onclick="switchLapTab('hari',this)">Hari Ini</button>
+          <button class="tab-btn" onclick="switchLapTab('arsip',this)">Arsip</button>
+          <button class="tab-btn" onclick="switchLapTab('labarugi',this)">Laba Rugi</button>
+          <button class="tab-btn" onclick="switchLapTab('grafik',this)">📈 Grafik</button>
+        </div>
+        <div id="lapHari" style="display:flex;flex-direction:column;flex:1;overflow:hidden;">
+          <div class="lap-period-row">
+            <button class="lap-period-btn active" onclick="setLapPeriod('hari',this)">Hari Ini</button>
+            <button class="lap-period-btn" onclick="setLapPeriod('minggu',this)">Minggu</button>
+            <button class="lap-period-btn" onclick="setLapPeriod('bulan',this)">Bulan</button>
+          </div>
+          <div class="stat-row" id="statRow"></div>
+          <div id="grafikWrap" class="grafik-wrap" style="display:none;"><h4>📈 Omzet Per Jam</h4><canvas id="grafikJam" height="80"></canvas></div>
+          <div id="topProdukWrap" style="background:var(--card);border:1.5px solid var(--brd);border-radius:11px;margin:0 10px 10px;overflow:hidden;display:none;flex-shrink:0;">
+            <div style="background:var(--g);color:#fff;padding:9px 14px;font-size:12px;font-weight:800;">🏆 Terlaris</div>
+            <div class="top-produk-list" id="topProdukList"></div>
+          </div>
+          <div class="rw-list" id="rwList"></div>
+        </div>
+        <div id="lapArsip" style="display:none;flex:1;overflow-y:auto;" class="rw-list"></div>
+        <div id="lapLabaRugi" style="display:none;flex:1;overflow-y:auto;padding:10px;"></div>
+        <div id="lapGrafik" style="display:none;flex:1;overflow-y:auto;padding:10px;">
+          <div class="grafik-wrap" style="margin:0 0 10px;">
+            <div class="grafik-tabs">
+              <button class="grafik-tab active" onclick="switchGrafikMode('mingguan',this)">Mingguan</button>
+              <button class="grafik-tab" onclick="switchGrafikMode('bulanan',this)">Bulanan</button>
+            </div>
+            <h4 id="grafikPeriodTitle">📅 Omzet 7 Hari Terakhir</h4>
+            <canvas id="grafikPeriod" height="120"></canvas>
+          </div>
+          <div style="background:var(--card);border:1.5px solid var(--brd);border-radius:11px;overflow:hidden;margin-bottom:10px;">
+            <div style="background:var(--g);color:#fff;padding:9px 14px;font-size:12px;font-weight:800;">🏆 Top 10 Produk Terlaris</div>
+            <div id="top10ProdukList"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PELANGGAN & POIN -->
+    <div class="page" id="page-pelanggan">
+      <div class="hutang-wrap">
+        <div class="hutang-toolbar"><h2>🎁 Pelanggan & Poin</h2><button class="btn-p" onclick="bukaM('mPelanggan')">+ Daftarkan</button></div>
+        <div style="padding:8px 10px;background:var(--ol);font-size:11px;color:#92400e;font-weight:600;flex-shrink:0;">
+          💡 Setiap Rp 10.000 belanja = 1 poin. 100 poin = diskon Rp 5.000
+        </div>
+        <div class="hutang-list" id="pelangganList"></div>
+      </div>
+    </div>
+
+    <!-- KAS KECIL -->
+    <div class="page" id="page-kaskecil">
+      <div class="hutang-wrap">
+        <div class="hutang-toolbar"><h2>💰 Kas Kecil</h2>
+          <button class="btn-p" onclick="bukaM('mKasKecil')">+ Transaksi</button>
+        </div>
+        <div class="kas-kecil-bar">
+          <div><div class="kkb-label">Saldo Kas Kecil</div><div class="kkb-saldo" id="kasKecilSaldo">Rp 0</div></div>
+          <div style="text-align:right"><div class="kkb-label">Modal Awal</div><div style="font-family:'Space Mono',monospace;font-size:14px;font-weight:700;" id="kasKecilModal">Rp 0</div></div>
+        </div>
+        <div class="hutang-list" id="kasKecilList"></div>
+      </div>
+    </div>
+
+    <!-- RETUR -->
+    <div class="page" id="page-retur">
+      <div class="hutang-wrap">
+        <div class="hutang-toolbar"><h2>🔄 Retur Barang</h2><button class="btn-p" onclick="bukaM('mRetur')">+ Retur</button></div>
+        <div class="hutang-list" id="returList"></div>
+      </div>
+    </div>
+
+    <!-- PENGATURAN -->
+    <div class="page" id="page-pengaturan">
+      <div class="sett-wrap">
+        <div class="page-toolbar"><h2>⚙️ Pengaturan</h2></div>
+        <div class="sett-body">
+          <div class="sett-sec">
+            <h3>🏪 Identitas Warung</h3>
+            <div style="background:var(--g);border-radius:10px;padding:10px 14px;display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+              <span id="prevLogo" style="font-size:28px;">🛒</span>
+              <div><div style="color:#fff;font-size:15px;font-weight:800;" id="prevNama">Warung Pro</div><div style="color:rgba(255,255,255,.6);font-size:11px;" id="prevAlamat">Alamat warung</div></div>
+            </div>
+            <div style="margin-bottom:10px;">
+              <div style="font-size:11px;font-weight:700;color:var(--gray);margin-bottom:6px;text-transform:uppercase;">📷 Upload Foto Logo</div>
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+                <div id="logoFotoPreviewWrap" style="width:60px;height:60px;border-radius:10px;background:var(--gp);border:2px dashed var(--gl);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;cursor:pointer;" onclick="document.getElementById('logoFotoInput').click()">
+                  <img id="logoFotoPreview" style="display:none;width:100%;height:100%;object-fit:cover;">
+                  <span id="logoFotoPlaceholder" style="font-size:22px;">📷</span>
+                </div>
+                <div>
+                  <button class="btn-sec" style="font-size:12px;margin-bottom:4px;" onclick="document.getElementById('logoFotoInput').click()">📁 Pilih Foto</button><br>
+                  <button class="btn-sec" style="font-size:11px;color:var(--r);border-color:var(--r);" onclick="hapusLogoFoto()">✕ Hapus Foto</button>
+                </div>
+                <input type="file" id="logoFotoInput" accept="image/*" style="display:none" onchange="handleLogoFoto(event)">
+              </div>
+              <div style="font-size:11px;font-weight:700;color:var(--gray);margin-bottom:6px;text-transform:uppercase;">Atau Pilih Emoji Logo</div>
+              <div style="display:flex;flex-wrap:wrap;gap:6px;" id="ikoGrid"></div>
+              <div style="margin-top:8px;display:flex;gap:6px;align-items:center;"><span style="font-size:11px;color:var(--gray);">Emoji:</span><input id="ikoCustom" placeholder="🏪" style="width:60px;font-size:20px;padding:4px 8px;border:1.5px solid var(--brd);border-radius:7px;text-align:center;outline:none;background:var(--inp);color:var(--txt);" oninput="previewLogo(this.value)"></div>
+            </div>
+            <div style="margin-bottom:10px;">
+              <div style="font-size:11px;font-weight:700;color:var(--gray);margin-bottom:6px;text-transform:uppercase;">Warna Tema</div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;" id="colorGrid"></div>
+            </div>
+            <div class="srow"><label>Nama Warung</label><input id="sNama" placeholder="Warung Bu Sari" oninput="document.getElementById('prevNama').textContent=this.value||'Warung Pro'"></div>
+            <div class="srow"><label>Alamat</label><input id="sAlamat" placeholder="Jl. Mawar No. 1" oninput="document.getElementById('prevAlamat').textContent=this.value||'Alamat warung'"></div>
+            <div class="srow"><label>No WA Pemilik</label><input id="sWA" placeholder="628123456789"></div>
+            <button class="btn-p" style="margin-top:8px" onclick="simpanSett()">💾 Simpan</button>
+          </div>
+          <div class="sett-sec">
+            <h3>🌙 Tampilan</h3>
+            <div class="dark-toggle"><label>Mode Gelap (Dark Mode)</label><label class="toggle-sw"><input type="checkbox" id="darkToggle" onchange="toggleDark(this.checked)"><span class="slider"></span></label></div>
+          </div>
+          <div class="sett-sec">
+            <h3>🏷 Kategori</h3>
+            <div class="katchips" id="katChips"></div>
+            <div class="addkat"><input type="text" id="katBaru" placeholder="Nama kategori baru..."><button onclick="tambahKat()">+ Tambah</button></div>
+          </div>
+          <div class="sett-sec">
+            <h3>👤 Pengguna</h3>
+            <div class="ulist" id="ulist"></div>
+            <button class="btn-p" style="margin-top:8px" onclick="bukaM('mUser')">+ Tambah</button>
+          </div>
+          <div class="sett-sec">
+            <h3>🖨 Printer Bluetooth & Cetak</h3>
+            <div class="printer-row"><span class="pstatus" id="pstatus">Belum terhubung</span><button class="btn-p" onclick="hubungPrinter()">🔌 Hubungkan</button></div>
+            <div style="margin-top:10px;">
+              <label style="font-size:11px;font-weight:700;color:var(--gray);text-transform:uppercase;">Ukuran Kertas Struk</label>
+              <div style="display:flex;gap:8px;margin-top:6px;">
+                <button class="metode-btn" id="kertasBtn58" style="flex:1" onclick="setKertasStruk('58')">58mm</button>
+                <button class="metode-btn" id="kertasBtn80" style="flex:1" onclick="setKertasStruk('80')">80mm</button>
+              </div>
+            </div>
+            <div class="wa-note" style="margin-top:8px">Printer thermal Bluetooth (Xprinter, RPP02N). Gunakan Chrome. Tombol "Cetak" di struk akan memakai dialog print browser — pilih printer thermal kamu di sana.</div>
+          </div>
+          <div class="sett-sec">
+            <h3>📱 Install Aplikasi (PWA)</h3>
+            <p style="font-size:12px;color:var(--gray);margin-bottom:10px;">Instal sebagai aplikasi di HP tanpa Play Store.</p>
+            <button class="btn-p" onclick="installPWA()" id="btnInstallPWA">⬇ Install Sekarang</button>
+            <div class="wa-note" style="margin-top:6px" id="pwaStatus">Cek status instalasi...</div>
+            <div class="wa-note" style="margin-top:6px;font-size:10px;line-height:1.6">
+              ℹ️ <b>Soal mode offline:</b> Install sebagai aplikasi (di atas) selalu bisa dilakukan. Tapi mode offline penuh (tetap bisa transaksi tanpa internet) baru aktif kalau app ini di-hosting di web server (GitHub Pages, Netlify, dll) — bukan dibuka langsung dari file HTML di HP. File <code>sw.js</code> pendamping tersedia untuk diupload bersama jika kamu sudah punya hosting.
+            </div>
+          </div>
+          <div class="sett-sec">
+            <h3>🔗 Backup Data</h3>
+            <div class="srow"><label>URL Google Apps Script</label><input id="sGS" placeholder="https://script.google.com/..."></div>
+            <button class="btn-gs" style="margin-top:8px" onclick="backupGS()">📊 Backup ke Google Sheets</button>
+          </div>
+          <div class="sett-sec">
+            <h3>💾 Backup & Restore Data Lokal</h3>
+            <div style="font-size:11px;color:var(--gray);margin-bottom:10px;line-height:1.7;">Backup data ke file JSON di HP kamu. Gunakan sebelum update agar data aman.</div>
+            <div style="display:flex;gap:8px;margin-bottom:8px;">
+              <button class="btn-p" style="flex:1;" onclick="eksporDataJSON()">📤 Backup Data</button>
+              <button class="btn-sec" style="flex:1;" onclick="document.getElementById('restoreFileInput').click()">📥 Restore Data</button>
+            </div>
+            <input type="file" id="restoreFileInput" accept=".json" style="display:none" onchange="imporDataJSON(event)">
+            <div id="backupInfo" style="font-size:10px;color:var(--gray);line-height:1.6;"></div>
+          </div>
+          <div class="sett-sec">
+            <h3>🔔 Cek Update Otomatis</h3>
+            <div style="font-size:11px;color:var(--gray);margin-bottom:10px;line-height:1.7;">Masukkan URL file HTML kamu di GitHub Pages. Aplikasi akan cek update tiap 10 menit dan tampilkan notif — <b>tidak akan auto-reload</b> saat ada customer.</div>
+            <div class="srow">
+              <label>URL GitHub Pages (file HTML)</label>
+              <input id="sGithubURL" placeholder="https://namakamu.github.io/repo/kasir.html" oninput="simpanGithubURL()">
+            </div>
+            <div style="display:flex;gap:8px;margin-top:8px;align-items:center;">
+              <button class="btn-sec" style="flex:1;" onclick="cekUpdateManual()">🔍 Cek Update Sekarang</button>
+              <div id="updateStatusDot" style="font-size:11px;color:var(--gray);">–</div>
+            </div>
+            <div style="font-size:10px;color:var(--gray);margin-top:6px;" id="lastUpdateCheck"></div>
+          </div>
+          <div class="sett-sec">
+            <h3>📅 Laporan Otomatis WA</h3>
+            <div style="font-size:11px;color:var(--gray);margin-bottom:10px">Rekap harian dikirim otomatis ke WA owner tiap hari.</div>
+            <div class="jadwal-row">
+              <span class="jadwal-label">Aktifkan Laporan Otomatis</span>
+              <label class="toggle-sw"><input type="checkbox" id="autoRekapToggle" onchange="simpanAutoRekap()"><span class="slider"></span></label>
+            </div>
+            <div class="jadwal-row">
+              <span class="jadwal-label">Jam Kirim</span>
+              <input type="time" class="jadwal-input" id="autoRekapJam" value="21:00" onchange="simpanAutoRekap()">
+            </div>
+          </div>
+          <div class="sett-sec">
+            <h3>📲 Notif WA Otomatis per Transaksi</h3>
+            <div style="font-size:11px;color:var(--gray);margin-bottom:10px">Struk otomatis dikirim ke WA pelanggan setelah transaksi selesai (jika pelanggan dipilih &amp; punya nomor WA).</div>
+            <div class="jadwal-row">
+              <span class="jadwal-label">Kirim Struk Otomatis ke Pelanggan</span>
+              <label class="toggle-sw"><input type="checkbox" id="autoNotifWaToggle" onchange="simpanAutoNotifWA()"><span class="slider"></span></label>
+            </div>
+            <div class="jadwal-row">
+              <span class="jadwal-label">Kirim Notif ke Owner (setiap transaksi)</span>
+              <label class="toggle-sw"><input type="checkbox" id="autoNotifOwnerToggle" onchange="simpanAutoNotifWA()"><span class="slider"></span></label>
+            </div>
+            <div style="font-size:10px;color:var(--gray);margin-top:4px;line-height:1.6">⚠️ WA akan terbuka otomatis di tab baru saat transaksi selesai. Pastikan nomor WA owner sudah diisi di atas.</div>
+          </div>
+          <div class="sett-sec">
+            <h3>💰 Pengaturan Poin Reward</h3>
+            <div class="srow"><label>Rp per 1 Poin (misal: 10000 = Rp 10rb = 1 poin)</label><input type="number" id="poinRpPerPoin" placeholder="10000" value="10000"></div>
+            <div class="srow"><label>1 Poin setara Rp (untuk redeem)</label><input type="number" id="poinNilai" placeholder="50" value="50"></div>
+            <button class="btn-p" onclick="simpanSettPoin()">💾 Simpan</button>
+          </div>
+          <div class="sett-sec owner-only">
+            <h3>🏪 Multi Cabang</h3>
+            <div style="font-size:11px;color:var(--gray);margin-bottom:10px">Kelola beberapa lokasi/toko dengan satu akun owner.</div>
+            <div id="cabangList" style="margin-bottom:8px"></div>
+            <button class="btn-p" onclick="bukaM('mCabang')">+ Tambah Cabang</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- LOG AKTIVITAS — v6 baru -->
+    <div class="page" id="page-activitylog">
+      <div class="sett-wrap">
+        <div class="page-toolbar">
+          <h2>📜 Log Aktivitas</h2>
+          <button class="btn-sec" onclick="eksporLogCSV()">⬇ Export CSV</button>
+        </div>
+        <div class="sett-body">
+          <div class="sett-sec" style="padding:10px 14px;">
+            <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+              <select id="logFilterUser" onchange="renderActivityLog()" style="flex:1;min-width:120px;padding:7px;border:1.5px solid var(--brd);border-radius:7px;background:var(--inp);color:var(--txt);font-size:12px;">
+                <option value="">Semua Pengguna</option>
+              </select>
+              <select id="logFilterAksi" onchange="renderActivityLog()" style="flex:1;min-width:120px;padding:7px;border:1.5px solid var(--brd);border-radius:7px;background:var(--inp);color:var(--txt);font-size:12px;">
+                <option value="">Semua Aksi</option>
+              </select>
+            </div>
+            <div style="font-size:11px;color:var(--gray);margin-bottom:10px;">Mencatat login/logout, perubahan produk, ubah stok manual, void transaksi, dan perubahan pengguna. Maks. 2000 entri terbaru disimpan.</div>
+            <div id="activityLogList"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- MODALS -->
+<div class="mov" id="mTambah"><div class="modal">
+  <h3 id="mTambahTitle">+ Tambah Produk</h3>
+  <div class="foto-upload" id="fotoUploadArea" onclick="triggerFotoInput()">
+    <div class="foto-placeholder" id="fotoPlaceholder"><span>📷</span><p>Tap untuk foto</p></div>
+    <img id="fotoPreview" style="display:none;width:100%;height:100%;object-fit:cover;border-radius:10px;">
+    <button class="foto-remove" id="fotoRemove" onclick="hapusFoto(event)">✕</button>
+    <input type="file" id="fotoInput" accept="image/*" onchange="handleFoto(event)" style="display:none">
+  </div>
+  <div class="fg"><label>Nama Produk</label><input id="fNama" placeholder="Indomie Goreng"></div>
+  <div style="display:flex;gap:8px">
+    <div class="fg" style="flex:1"><label>Barcode</label><input id="fBarcode" placeholder="Scan/ketik" oninput="cekDuplikatBarcode()"><div id="barcodeWarn" style="display:none;font-size:11px;font-weight:700;color:var(--r);margin-top:4px;padding:5px 8px;background:var(--rl);border-radius:6px;"></div></div>
+    <div style="display:flex;align-items:flex-end;padding-bottom:10px;"><button class="btn-sec" onclick="scanBarcodeTambah()" style="white-space:nowrap;padding:8px 10px;">📷</button></div>
+  </div>
+  <div class="fg"><label>Kategori</label><select id="fKat"></select></div>
+  <div style="display:flex;gap:8px">
+    <div class="fg" style="flex:1"><label>Harga Jual</label><input type="number" id="fHarga" placeholder="5000"></div>
+    <div class="fg" style="flex:1"><label>Harga Modal</label><input type="number" id="fModal" placeholder="3500"></div>
+  </div>
+  <div style="display:flex;gap:8px">
+    <div class="fg" style="flex:1"><label>Harga Grosir</label><input type="number" id="fGrosir" placeholder="Opsional"></div>
+    <div class="fg" style="flex:1"><label>Min Qty Grosir</label><input type="number" id="fGrosirMin" placeholder="5"></div>
+  </div>
+  <div style="display:flex;gap:8px">
+    <div class="fg" style="flex:1"><label>Stok</label><input type="number" id="fStok" placeholder="0"></div>
+    <div class="fg" style="flex:1"><label>Min Stok Alert</label><input type="number" id="fMinStok" placeholder="5"></div>
+  </div>
+  <div class="fg"><label>Tanggal Expired (opsional)</label><input type="date" id="fExp"></div>
+  <div class="fg" style="display:flex;align-items:center;gap:10px;background:var(--gl2);padding:8px 10px;border-radius:8px;">
+    <label style="font-size:12px;font-weight:700;color:var(--txt);margin:0;flex:1;">⚖ Produk Timbang (harga per kg/gram)</label>
+    <label class="toggle-sw"><input type="checkbox" id="fTimbang"><span class="slider"></span></label>
+  </div>
+  <div class="fg" style="display:flex;align-items:center;gap:10px;background:var(--gl2);padding:8px 10px;border-radius:8px;margin-top:6px;">
+    <label style="font-size:12px;font-weight:700;color:var(--txt);margin:0;flex:1;">⭐ Tandai Favorit</label>
+    <label class="toggle-sw"><input type="checkbox" id="fFav"><span class="slider"></span></label>
+  </div>
+  <div class="fg" id="fgSatuan" style="display:none">
+    <label>Satuan (misal: kg, pcs, liter, karton)</label>
+    <input id="fSatuan" placeholder="kg">
+  </div>
+  <input type="hidden" id="fId">
+  <div class="macts"><button class="bcan" onclick="tutupM('mTambah')">Batal</button><button class="bsav" onclick="simpanProduk()">💾 Simpan</button></div>
+</div></div>
+
+<div class="mov" id="mTimbang"><div class="modal">
+  <h3>⚖ Produk Timbang</h3>
+  <div class="tim-produk-info"><div><div class="tpn" id="timNama">-</div><div class="tph" id="timHarga">-</div></div><div id="timImg" style="font-size:28px"></div></div>
+  <div class="satuan-pills" id="satuanPills"></div>
+  <div class="berat-wrap">
+    <label>Berat / Jumlah</label>
+    <div class="berat-input-row">
+      <input type="number" class="berat-input" id="beratInput" placeholder="0.0" step="0.1" min="0" oninput="hitungTimbang()">
+      <span class="berat-unit" id="beratUnit">kg</span>
+    </div>
+  </div>
+  <div class="berat-cepat" id="beratCepat"></div>
+  <div class="hasil-box"><div class="hl">💰 Total Harga</div><div class="hv" id="hasilHarga">Rp 0</div><div class="hd" id="hasilDetail">-</div></div>
+  <div class="macts"><button class="bcan" onclick="tutupM('mTimbang')">Batal</button><button class="bsav bsav-tim" onclick="addTimbang()">+ Keranjang</button></div>
+</div></div>
+
+<div class="mov" id="mBayar"><div class="modal">
+  <h3>💰 Konfirmasi Pembayaran</h3>
+  <div class="ktot-box"><div class="kbl">Total Tagihan</div><div class="kba" id="mTotalBayar">Rp 0</div><div class="kbk" id="mMetodeBayar">💵 Tunai</div></div>
+  <div class="struk" id="strukPreview"></div>
+  <div class="macts"><button class="bcan" onclick="tutupM('mBayar')">Batal</button><button class="bsav" onclick="prosesTransaksi()">✅ Proses</button></div>
+</div></div>
+
+<div class="mov" id="mSukses"><div class="modal" style="text-align:center">
+  <div style="font-size:52px;margin-bottom:8px">✅</div>
+  <h3 style="margin-bottom:4px">Transaksi Berhasil!</h3>
+  <div style="font-family:'Space Mono',monospace;font-size:22px;color:var(--gm);font-weight:800;margin-bottom:4px" id="suksesTotal">Rp 0</div>
+  <div style="font-size:14px;color:var(--gray)" id="suksesKem"></div>
+  <div class="struk" style="margin-top:12px;text-align:left" id="strukSukses"></div>
+  <div class="macts" style="flex-wrap:wrap;gap:6px;margin-top:10px;">
+    <button class="bcan" style="flex:1" onclick="cetakStruk()">🖨 Cetak</button>
+    <button class="bcan" style="flex:1" onclick="shareStruk()">📱 Share</button>
+    <button class="bsav" style="flex:2" onclick="tutupM('mSukses')">Lanjut →</button>
+  </div>
+  <button class="struk-wa-btn" onclick="kirimStrukWaPelanggan()">📲 Kirim Struk ke WA Pelanggan</button>
+  <button class="struk-wa-btn" style="background:#128C7E;margin-top:6px" onclick="kirimStrukSebagaiGambar()">🖼 Kirim Struk sebagai Gambar</button>
+  <button class="struk-wa-btn" style="background:transparent;border:1.5px solid var(--r);color:var(--r);margin-top:10px" onclick="bukaVoidCepat()" id="btnVoidCepat">🚫 Salah Input? Batalkan Transaksi Ini</button>
+</div></div>
+
+<div class="mov" id="mHargaCustom"><div class="modal">
+  <h3>✏ Ubah Harga</h3>
+  <div class="fg"><label>Nama Produk</label><input id="hcNama" readonly style="background:var(--gl2)"></div>
+  <div class="fg"><label>Harga Normal</label><input id="hcNormal" readonly style="background:var(--gl2)"></div>
+  <div class="fg"><label>Harga Custom (Rp)</label><input type="number" id="hcInput" placeholder="Masukkan harga baru" min="0"></div>
+  <input type="hidden" id="hcIdx">
+  <div class="macts"><button class="bcan" onclick="tutupM('mHargaCustom')">Batal</button><button class="bsav" onclick="simpanHargaCustom()">✔ Terapkan</button></div>
+</div></div>
+
+<!-- Modal +Stok manual: pengganti prompt() bawaan browser yang sering tidak muncul / gagal
+     render di Chrome Android, sehingga tombol terasa "tidak bisa dipencet". -->
+<div class="mov" id="mStokEdit"><div class="modal">
+  <h3>📦 Ubah Stok</h3>
+  <div class="fg"><label>Nama Produk</label><input id="seNama" readonly style="background:var(--gl2)"></div>
+  <div class="fg"><label>Stok Saat Ini</label><input id="seStokSaatIni" readonly style="background:var(--gl2)"></div>
+  <div class="fg">
+    <label>Jumlah Perubahan</label>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button class="btn-sec" style="width:48px;flex-shrink:0;font-size:20px;font-weight:700;" onclick="seGeser(-1)">−</button>
+      <input type="number" id="seInput" placeholder="contoh: 5 atau -3" style="text-align:center;font-weight:700;font-size:16px;" oninput="_seUpdateHasil()">
+      <button class="btn-sec" style="width:48px;flex-shrink:0;font-size:20px;font-weight:700;" onclick="seGeser(1)">+</button>
+    </div>
+    <div style="font-size:10.5px;color:var(--gray);margin-top:5px;">Isi angka positif untuk menambah stok, negatif (pakai tanda −) untuk mengurangi.</div>
+  </div>
+  <div class="fg"><label>Hasil Stok</label><input id="seHasil" readonly style="background:var(--gp);font-weight:700;color:var(--gm);"></div>
+  <input type="hidden" id="seId">
+  <div class="macts"><button class="bcan" onclick="tutupM('mStokEdit')">Batal</button><button class="bsav" onclick="simpanStokEdit()">✔ Simpan</button></div>
+</div></div>
+
+<!-- Modal konfirmasi generik: pengganti confirm() bawaan browser di seluruh aplikasi,
+     karena confirm()/prompt() native sering tidak tampil di Chrome Android. -->
+<div class="mov" id="mKonfirmasi"><div class="modal" style="text-align:center;">
+  <div style="font-size:38px;margin-bottom:6px;" id="konfIcon">⚠️</div>
+  <div id="konfPesan" style="font-size:14px;font-weight:600;color:var(--txt);white-space:pre-line;margin-bottom:4px;">Apakah kamu yakin?</div>
+  <div class="macts"><button class="bcan" onclick="tutupM('mKonfirmasi')">Batal</button><button class="bsav" id="konfBtnYa" style="background:var(--r);">✔ Ya, Lanjutkan</button></div>
+</div></div>
+
+<div class="mov" id="mHutang"><div class="modal">
+  <h3>💳 Catat Hutang</h3>
+  <div class="fg"><label>Nama Pelanggan</label><input id="hNama" placeholder="Pak Budi"></div>
+  <div class="fg"><label>No. WA (opsional)</label><input id="hWa" placeholder="628123456789" type="tel"></div>
+  <div class="fg"><label>Nominal (Rp)</label><input type="number" id="hNominal" placeholder="50000"></div>
+  <div class="fg"><label>Keterangan</label><input id="hKet" placeholder="Beli beras 5kg"></div>
+  <div class="macts"><button class="bcan" onclick="tutupM('mHutang')">Batal</button><button class="bsav" onclick="simpanHutang()">💾 Simpan</button></div>
+</div></div>
+
+<!-- MODAL BUNDLING -->
+<div class="mov" id="mBundling"><div class="modal">
+  <h3>🎁 Buat Produk Paket</h3>
+  <div class="fg"><label>Nama Paket</label><input id="bndNama" placeholder="Paket Nasi + Lauk"></div>
+  <div class="fg"><label>Emoji / Ikon</label><input id="bndEmoji" placeholder="🍱" maxlength="2" value="🎁"></div>
+  <div class="fg"><label>Harga Paket (Rp)</label><input type="number" id="bndHarga" placeholder="15000"></div>
+  <div class="fg"><label>Produk dalam Paket (pisah koma)</label><input id="bndItems" placeholder="Nasi Putih, Ayam Goreng, Es Teh"></div>
+  <div class="fg"><label>Kategori</label><input id="bndKategori" placeholder="Paket Makan"></div>
+  <div class="macts"><button class="bcan" onclick="tutupM('mBundling')">Batal</button><button class="bsav" onclick="simpanBundling()">💾 Simpan</button></div>
+</div></div>
+
+<!-- MODAL TARGET OMZET -->
+<div class="mov" id="mTarget"><div class="modal">
+  <h3>🎯 Set Target Omzet Harian</h3>
+  <div class="fg"><label>Target Omzet Per Hari (Rp)</label><input type="number" id="targetNominal" placeholder="1000000"></div>
+  <div class="macts"><button class="bcan" onclick="tutupM('mTarget')">Batal</button><button class="bsav" onclick="simpanTarget()">💾 Simpan</button></div>
+</div></div>
+
+<!-- MODAL LAPORAN SHIFT -->
+<div class="mov" id="mShiftReport"><div class="modal" style="max-height:85vh;overflow-y:auto;">
+  <h3>📋 Laporan Shift</h3>
+  <div id="shiftReportContent"></div>
+  <div class="macts"><button class="bcan" onclick="tutupM('mShiftReport')">Tutup</button><button class="bsav" onclick="shareShiftReport()">📱 Share WA</button></div>
+</div></div>
+
+<div class="mov" id="mSupplier"><div class="modal">
+  <h3>🏭 Tambah Supplier</h3>
+  <div class="fg"><label>Nama Supplier</label><input id="supNama" placeholder="CV Maju Jaya"></div>
+  <div class="fg"><label>Kontak / No WA</label><input id="supKontak" placeholder="628123456789"></div>
+  <div class="fg"><label>Produk Supplied</label><input id="supProduk" placeholder="Mie, Snack, dll"></div>
+  <div class="macts"><button class="bcan" onclick="tutupM('mSupplier')">Batal</button><button class="bsav" onclick="simpanSupplier()">💾 Simpan</button></div>
+</div></div>
+
+<div class="mov" id="mPembelian"><div class="modal">
+  <h3>🛍 Restok Barang</h3>
+  <div class="fg"><label>Supplier</label><select id="beliSup"><option value="">-- Pilih Supplier --</option></select></div>
+  <div id="beliItems" style="max-height:220px;overflow-y:auto;margin-bottom:8px;"></div>
+  <button class="btn-sec" style="width:100%;margin-bottom:8px" onclick="tambahBeliItem()">+ Tambah Item</button>
+  <div class="fg"><label>Total Beli (Rp)</label><input type="number" id="beliTotal" placeholder="Auto hitung" readonly style="background:var(--gl2)"></div>
+  <div class="fg"><label>Catatan</label><input id="beliCatatan" placeholder="Opsional"></div>
+  <div class="macts"><button class="bcan" onclick="tutupM('mPembelian')">Batal</button><button class="bsav" onclick="simpanPembelian()">💾 Simpan & Update Stok</button></div>
+</div></div>
+
+<div class="mov" id="mKas"><div class="modal">
+  <h3>💸 Catat Pengeluaran</h3>
+  <div class="fg"><label>Keterangan</label><input id="kasNama" placeholder="Bayar listrik"></div>
+  <div class="fg"><label>Kategori</label><select id="kasKat"><option>Operasional</option><option>Belanja</option><option>Gaji</option><option>Lainnya</option></select></div>
+  <div class="fg"><label>Nominal (Rp)</label><input type="number" id="kasNominal" placeholder="150000"></div>
+  <div class="macts"><button class="bcan" onclick="tutupM('mKas')">Batal</button><button class="bsav" onclick="simpanKas()">💾 Simpan</button></div>
+</div></div>
+
+<div class="mov" id="mUser"><div class="modal">
+  <h3>👤 Tambah Pengguna</h3>
+  <div class="fg"><label>Nama</label><input id="uNama" placeholder="Kasir Baru"></div>
+  <div class="fg"><label>Role</label><select id="uRole"><option value="kasir">Kasir (transaksi saja)</option><option value="stok">Manajer Stok (kelola produk & harga)</option><option value="owner">Pemilik (akses penuh)</option></select></div>
+  <div class="fg"><label>PIN (4-6 digit)</label><input type="password" id="uPin" placeholder="0000" maxlength="6"></div>
+  <div class="fg"><label>Ikon</label><div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px" id="uIkoGrid"></div></div>
+  <div class="macts"><button class="bcan" onclick="tutupM('mUser')">Batal</button><button class="bsav" onclick="simpanUser()">💾 Simpan</button></div>
+</div></div>
+
+<div class="mov" id="mScanner"><div class="modal">
+  <h3>📷 Scan Barcode</h3>
+
+  <!-- Mode tabs -->
+  <div style="display:flex;gap:6px;margin-bottom:10px;">
+    <button id="scanTabKamera" class="metode-btn active" style="flex:1;font-size:12px;" onclick="switchScanMode('kamera')">📹 Kamera Live</button>
+    <button id="scanTabFoto" class="metode-btn" style="flex:1;font-size:12px;" onclick="switchScanMode('foto')">🖼 Foto/Galeri</button>
+    <button id="scanTabManual" class="metode-btn" style="flex:1;font-size:12px;" onclick="switchScanMode('manual')">⌨️ Manual</button>
+  </div>
+
+  <!-- MODE 1: Kamera live -->
+  <div id="scanModeKamera">
+    <div class="scanarea"><video id="scanVideo" autoplay playsinline muted></video><div class="scanline"></div></div>
+  </div>
+
+  <!-- MODE 2: Foto dari kamera/galeri -->
+  <div id="scanModeFoto" style="display:none;">
+    <div style="border:2px dashed var(--brd);border-radius:10px;padding:16px;text-align:center;background:var(--gl2);margin-bottom:8px;">
+      <div style="font-size:32px;margin-bottom:6px;">📸</div>
+      <p style="font-size:12px;color:var(--gray);margin-bottom:10px;">Foto barcode dari kamera atau pilih dari galeri</p>
+      <button class="btn-p" style="margin-bottom:6px;width:100%;" onclick="document.getElementById('scanFotoKamera').click()">📷 Buka Kamera</button>
+      <button class="btn-sec" style="width:100%;" onclick="document.getElementById('scanFotoGaleri').click()">🖼 Pilih dari Galeri</button>
+      <input type="file" id="scanFotoKamera" accept="image/*" capture="environment" style="display:none" onchange="prosesGambarBarcode(event)">
+      <input type="file" id="scanFotoGaleri" accept="image/*" style="display:none" onchange="prosesGambarBarcode(event)">
+    </div>
+    <div id="scanFotoPreviewWrap" style="display:none;margin-bottom:8px;">
+      <img id="scanFotoPreview" style="width:100%;border-radius:8px;max-height:160px;object-fit:contain;">
+    </div>
+  </div>
+
+  <!-- MODE 3: Input manual -->
+  <div id="scanModeManual" style="display:none;">
+    <div style="background:var(--gl2);border-radius:10px;padding:14px;margin-bottom:8px;">
+      <p style="font-size:12px;color:var(--gray);margin-bottom:8px;">Ketik atau tempel kode barcode secara manual:</p>
+      <input type="text" id="manualBarcodeInput" placeholder="Contoh: 8992388195607"
+        style="width:100%;padding:10px 12px;border:2px solid var(--brd);border-radius:8px;font-size:15px;font-family:'Space Mono',monospace;outline:none;background:var(--inp);color:var(--txt);letter-spacing:2px;"
+        oninput="this.value=this.value.replace(/[^0-9a-zA-Z\-]/g,'')"
+        onkeydown="if(event.key==='Enter')submitManualBarcode()">
+      <button class="btn-p" style="width:100%;margin-top:8px;" onclick="submitManualBarcode()">🔍 Cari Produk</button>
+    </div>
+  </div>
+
+  <div class="scanres" id="scanResult">Pilih mode scan di atas...</div>
+  <div class="macts"><button class="bsav" style="flex:1" onclick="tutupScanner()">✕ Tutup</button></div>
+</div></div>
+
+<!-- MODAL RESTOK CEPAT -->
+<div class="mov" id="mRestokCepat"><div class="modal" style="max-height:94vh;overflow-y:auto;">
+  <h3>📥 Restok Stok Barang</h3>
+
+  <!-- Tab pilihan mode -->
+  <div style="display:flex;gap:0;border-radius:9px;overflow:hidden;border:1.5px solid var(--brd);margin-bottom:14px;">
+    <button id="tabRestokManual" class="metode-btn active" style="flex:1;border-radius:0;border:none;font-size:12px;padding:9px 4px;" onclick="setTabRestok('manual')">✏️ Input Manual</button>
+    <button id="tabRestokCSV" class="metode-btn" style="flex:1;border-radius:0;border:none;font-size:12px;padding:9px 4px;" onclick="setTabRestok('csv')">📄 Import CSV</button>
+  </div>
+
+  <!-- TAB MANUAL -->
+  <div id="restokTabManual">
+    <!-- Search produk -->
+    <div style="display:flex;gap:6px;margin-bottom:10px;">
+      <div style="position:relative;flex:1;">
+        <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:14px;color:var(--gray);pointer-events:none;">🔍</span>
+        <input id="restokSearch" type="text" placeholder="Cari nama / scan barcode..." style="width:100%;padding:9px 10px 9px 34px;border:2px solid var(--brd);border-radius:9px;font-size:14px;font-family:inherit;outline:none;background:var(--inp);color:var(--txt);" oninput="renderRestokList()">
+      </div>
+      <button class="btn-scan" style="border-radius:9px;" onclick="scanBarcodeRestok()">📷</button>
+    </div>
+
+    <!-- Filter kategori -->
+    <div id="restokKatFilter" style="display:flex;gap:5px;overflow-x:auto;margin-bottom:10px;padding-bottom:4px;"></div>
+    <style>.restok-kat-filter::-webkit-scrollbar{display:none}</style>
+
+    <!-- Daftar produk restok -->
+    <div style="font-size:10px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px;">
+      Masukkan jumlah yang <span style="color:var(--gm)">DITAMBAHKAN</span> ke stok saat ini:
+    </div>
+    <div id="restokList" style="border:1.5px solid var(--brd);border-radius:10px;overflow:hidden;max-height:300px;overflow-y:auto;margin-bottom:10px;"></div>
+
+    <!-- Ringkasan -->
+    <div id="restokSummary" style="display:none;background:var(--gp);border:1.5px solid var(--gl);border-radius:9px;padding:10px 12px;margin-bottom:10px;font-size:12px;color:var(--gm);font-weight:700;"></div>
+
+    <!-- Keterangan / catatan -->
+    <div style="margin-bottom:10px;">
+      <label style="font-size:11px;font-weight:700;color:var(--gray);text-transform:uppercase;display:block;margin-bottom:4px;">Catatan Restok</label>
+      <input id="restokKet" type="text" placeholder="Contoh: Belanja pagi, Supplier A, dll" style="width:100%;padding:8px 12px;border:1.5px solid var(--brd);border-radius:8px;font-size:13px;font-family:inherit;outline:none;background:var(--inp);color:var(--txt);">
+    </div>
+
+    <div class="macts">
+      <button class="bcan" onclick="tutupM('mRestokCepat')">Batal</button>
+      <button class="bsav" style="flex:2;" onclick="simpanRestokCepat()">💾 Simpan Restok</button>
+    </div>
+  </div>
+
+  <!-- TAB CSV RESTOK -->
+  <div id="restokTabCSV" style="display:none;">
+    <div style="background:var(--gp);border:1.5px solid var(--gl);border-radius:10px;padding:12px;margin-bottom:12px;">
+      <div style="font-size:12px;font-weight:700;color:var(--gm);margin-bottom:6px;">📋 Format CSV Restok:</div>
+      <div style="font-family:'Space Mono',monospace;font-size:10px;color:var(--txt2);line-height:1.8;">
+        Nama,Barcode,Tambah Stok<br>
+        Indomie Goreng,,48<br>
+        Aqua 600ml,8886011101009,60
+      </div>
+      <div style="font-size:10px;color:var(--gm);margin-top:6px;">💡 Stok akan <b>ditambah</b> ke stok yang ada, bukan diganti.</div>
+    </div>
+
+    <button class="btn-sec" style="width:100%;margin-bottom:10px;" onclick="downloadTemplateRestokCSV()">📄 Download Template Restok</button>
+
+    <div style="border:2px dashed var(--brd);border-radius:10px;padding:20px;text-align:center;background:var(--gl2);cursor:pointer;margin-bottom:10px;" onclick="document.getElementById('restokCSVInput').click()">
+      <div style="font-size:32px;margin-bottom:6px;">📂</div>
+      <div style="font-size:13px;font-weight:700;color:var(--txt);">Tap untuk pilih file CSV</div>
+      <div style="font-size:11px;color:var(--gray);margin-top:4px;" id="restokCSVFileName">Belum ada file dipilih</div>
+    </div>
+    <input type="file" id="restokCSVInput" accept=".csv" style="display:none" onchange="prosesRestokCSV(event)">
+
+    <!-- Preview -->
+    <div id="restokCSVPreview" style="display:none;">
+      <div style="font-size:11px;font-weight:700;color:var(--gray);margin-bottom:6px;text-transform:uppercase;">Preview (<span id="restokCSVJml">0</span> produk):</div>
+      <div style="border:1.5px solid var(--brd);border-radius:8px;overflow:hidden;max-height:200px;overflow-y:auto;margin-bottom:10px;">
+        <table style="width:100%;border-collapse:collapse;font-size:11px;">
+          <thead><tr style="background:var(--g);color:#fff;">
+            <th style="padding:6px 8px;text-align:left;">Status</th>
+            <th style="padding:6px 8px;text-align:left;">Nama Produk</th>
+            <th style="padding:6px 8px;text-align:center;">Stok Skrg</th>
+            <th style="padding:6px 8px;text-align:center;">+Tambah</th>
+            <th style="padding:6px 8px;text-align:center;">Jadi</th>
+          </tr></thead>
+          <tbody id="restokCSVBody"></tbody>
+        </table>
+      </div>
+      <div id="restokCSVError" style="display:none;background:var(--rl);border:1.5px solid var(--r);border-radius:8px;padding:10px;margin-bottom:10px;font-size:11px;color:var(--r);"></div>
+      <div style="margin-bottom:10px;">
+        <label style="font-size:11px;font-weight:700;color:var(--gray);text-transform:uppercase;display:block;margin-bottom:4px;">Catatan Restok</label>
+        <input id="restokCSVKet" type="text" placeholder="Contoh: Belanja pagi, Supplier A, dll" style="width:100%;padding:8px 12px;border:1.5px solid var(--brd);border-radius:8px;font-size:13px;font-family:inherit;outline:none;background:var(--inp);color:var(--txt);">
+      </div>
+      <div class="macts">
+        <button class="bcan" onclick="resetRestokCSV()">← Ulang</button>
+        <button class="bsav" style="flex:2;" onclick="simpanRestokCSV()">💾 Simpan Restok CSV</button>
+      </div>
+    </div>
+
+    <div style="text-align:right;margin-top:8px;">
+      <button class="bcan" onclick="tutupM('mRestokCepat')" style="font-size:12px;">✕ Tutup</button>
+    </div>
+  </div>
+</div></div>
+
+<!-- MODAL IMPORT CSV -->
+<div class="mov" id="mImportCSV"><div class="modal" style="max-height:92vh;overflow-y:auto;">
+  <h3>📥 Import Produk dari CSV</h3>
+
+  <!-- Step indikator -->
+  <div style="display:flex;gap:0;margin-bottom:14px;border-radius:8px;overflow:hidden;border:1.5px solid var(--brd);">
+    <div id="importStep1Ind" style="flex:1;padding:7px 4px;text-align:center;font-size:11px;font-weight:700;background:var(--gm);color:#fff;">1 Upload</div>
+    <div id="importStep2Ind" style="flex:1;padding:7px 4px;text-align:center;font-size:11px;font-weight:700;background:var(--gl2);color:var(--gray);">2 Preview</div>
+    <div id="importStep3Ind" style="flex:1;padding:7px 4px;text-align:center;font-size:11px;font-weight:700;background:var(--gl2);color:var(--gray);">3 Selesai</div>
+  </div>
+
+  <!-- Step 1: Upload -->
+  <div id="importStep1">
+    <div style="background:var(--gp);border:1.5px solid var(--gl);border-radius:10px;padding:12px;margin-bottom:12px;">
+      <div style="font-size:12px;font-weight:700;color:var(--gm);margin-bottom:6px;">📋 Format CSV yang diperlukan:</div>
+      <div style="font-family:'Space Mono',monospace;font-size:10px;color:var(--txt2);line-height:1.8;word-break:break-all;">
+        Nama,Barcode,Kategori,Harga Jual,Modal,Stok,Min Stok<br>
+        Indomie Goreng,8992388195607,Mie & Pasta,3500,2800,48,5<br>
+        Aqua 600ml,8886011101009,Minuman,3000,2200,60,10
+      </div>
+    </div>
+    <button class="btn-sec" style="width:100%;margin-bottom:10px;" onclick="downloadTemplateCSV()">
+      📄 Download Template CSV
+    </button>
+    <div style="font-size:11px;font-weight:700;color:var(--gray);margin-bottom:6px;text-transform:uppercase;">Upload File CSV:</div>
+    <div style="border:2px dashed var(--brd);border-radius:10px;padding:20px;text-align:center;background:var(--gl2);cursor:pointer;" onclick="document.getElementById('csvFileInput').click()">
+      <div style="font-size:32px;margin-bottom:6px;">📂</div>
+      <div style="font-size:13px;font-weight:700;color:var(--txt);">Tap untuk pilih file CSV</div>
+      <div style="font-size:11px;color:var(--gray);margin-top:4px;">Format: .csv (dari Excel atau Google Sheets)</div>
+    </div>
+    <input type="file" id="csvFileInput" accept=".csv,text/csv" style="display:none" onchange="prosesUploadCSV(event)">
+
+    <div style="margin-top:12px;background:var(--ol);border-radius:8px;padding:10px 12px;">
+      <div style="font-size:11px;font-weight:700;color:#92400e;margin-bottom:4px;">💡 Tips:</div>
+      <div style="font-size:11px;color:#92400e;line-height:1.7;">
+        • Buat di Google Sheets → File → Download → CSV<br>
+        • Baris pertama = header (judul kolom), jangan dihapus<br>
+        • Kolom Barcode boleh dikosongkan<br>
+        • Kategori otomatis ditambah jika belum ada<br>
+        • Pilihan mode: tambah baru ATAU update + tambah
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 2: Preview -->
+  <div id="importStep2" style="display:none;">
+    <div id="importSummaryBox" style="background:var(--gp);border:1.5px solid var(--gl);border-radius:10px;padding:12px;margin-bottom:10px;"></div>
+
+    <!-- Mode import -->
+    <div style="margin-bottom:10px;">
+      <div style="font-size:11px;font-weight:700;color:var(--gray);margin-bottom:6px;text-transform:uppercase;">Mode Import:</div>
+      <div style="display:flex;gap:6px;">
+        <button id="modeImportTambah" class="metode-btn active" style="flex:1;font-size:11px;" onclick="setModeImport('tambah')">➕ Tambah Baru Saja</button>
+        <button id="modeImportUpdate" class="metode-btn" style="flex:1;font-size:11px;" onclick="setModeImport('update')">🔄 Update + Tambah</button>
+      </div>
+      <div id="modeImportInfo" style="font-size:10px;color:var(--gray);margin-top:5px;padding:6px 8px;background:var(--gl2);border-radius:6px;">
+        Hanya tambah produk baru. Produk yang sudah ada tidak diubah.
+      </div>
+    </div>
+
+    <!-- Tabel preview -->
+    <div style="font-size:11px;font-weight:700;color:var(--gray);margin-bottom:6px;text-transform:uppercase;">Preview Data (<span id="importJmlPreview">0</span> baris):</div>
+    <div style="border:1.5px solid var(--brd);border-radius:8px;overflow:hidden;max-height:220px;overflow-y:auto;margin-bottom:10px;">
+      <table style="width:100%;border-collapse:collapse;font-size:11px;">
+        <thead><tr style="background:var(--g);color:#fff;position:sticky;top:0;">
+          <th style="padding:6px 8px;text-align:left;">Status</th>
+          <th style="padding:6px 8px;text-align:left;">Nama</th>
+          <th style="padding:6px 8px;text-align:left;">Harga</th>
+          <th style="padding:6px 8px;text-align:left;">Stok</th>
+        </tr></thead>
+        <tbody id="importPreviewBody"></tbody>
+      </table>
+    </div>
+
+    <!-- Error rows -->
+    <div id="importErrorBox" style="display:none;background:var(--rl);border:1.5px solid var(--r);border-radius:8px;padding:10px;margin-bottom:10px;">
+      <div style="font-size:11px;font-weight:700;color:var(--r);margin-bottom:4px;">⚠️ Baris bermasalah (akan dilewati):</div>
+      <div id="importErrorList" style="font-size:10px;color:var(--r);line-height:1.8;"></div>
+    </div>
+
+    <div class="macts">
+      <button class="bcan" onclick="resetImport()">← Ulang</button>
+      <button class="bsav" style="flex:2" onclick="prosesImportCSV()">✅ Import Sekarang</button>
+    </div>
+  </div>
+
+  <!-- Step 3: Hasil -->
+  <div id="importStep3" style="display:none;text-align:center;">
+    <div style="font-size:52px;margin:10px 0;">✅</div>
+    <div style="font-size:16px;font-weight:800;color:var(--gm);margin-bottom:6px;" id="importHasilTitle">Import Selesai!</div>
+    <div id="importHasilDetail" style="font-size:13px;color:var(--gray);margin-bottom:16px;line-height:1.8;"></div>
+    <button class="bsav" style="width:100%;" onclick="tutupM('mImportCSV');renderStok();resetImport()">✔ Lihat Produk</button>
+  </div>
+
+  <div style="margin-top:8px;text-align:right;">
+    <button class="bcan" onclick="tutupM('mImportCSV');resetImport()" style="font-size:12px;">✕ Tutup</button>
+  </div>
+</div></div>
+
+<div class="mov" id="mVoid"><div class="modal">
+  <h3>🚫 Void Transaksi</h3>
+  <p style="font-size:13px;color:var(--gray);margin-bottom:12px">Void akan membatalkan transaksi ini dan mengembalikan stok produk. Tindakan ini tidak bisa dibatalkan.</p>
+  <div class="fg"><label>Alasan Void</label><input id="voidAlasan" placeholder="Salah input, pelanggan batal, dll"></div>
+  <input type="hidden" id="voidIdx">
+  <div class="macts"><button class="bcan" onclick="tutupM('mVoid')">Batal</button><button style="flex:1;padding:9px;border-radius:7px;font-size:13px;font-weight:700;background:var(--r);color:#fff;border:none;cursor:pointer;" onclick="prosesVoid()">🚫 Void</button></div>
+</div></div>
+
+<!-- MODAL PELANGGAN -->
+<div class="mov" id="mPelanggan"><div class="modal">
+  <h3>🎁 Daftarkan Pelanggan</h3>
+  <div class="fg"><label>Nama Pelanggan</label><input id="pelNama" placeholder="Nama lengkap"></div>
+  <div class="fg"><label>No. WhatsApp</label><input id="pelWa" placeholder="628123456789" type="tel"></div>
+  <div class="fg"><label>Catatan (opsional)</label><input id="pelCatatan" placeholder="Pelanggan setia, dll"></div>
+  <div class="macts"><button class="bcan" onclick="tutupM('mPelanggan')">Batal</button><button class="bsav" onclick="simpanPelanggan()">💾 Simpan</button></div>
+</div></div>
+
+<!-- MODAL KAS KECIL -->
+<div class="mov" id="mKasKecil"><div class="modal">
+  <h3>💰 Transaksi Kas Kecil</h3>
+  <div class="fg">
+    <label>Jenis</label>
+    <div style="display:flex;gap:6px;margin-top:2px">
+      <button id="kkMasukBtn" class="metode-btn active" style="flex:1" onclick="setKKJenis('masuk',this)">📥 Setor/Masuk</button>
+      <button id="kkKeluarBtn" class="metode-btn" style="flex:1" onclick="setKKJenis('keluar',this)">📤 Tarik/Keluar</button>
+    </div>
+  </div>
+  <div class="fg"><label>Nominal (Rp)</label><input type="number" id="kkNominal" placeholder="100000"></div>
+  <div class="fg"><label>Keterangan</label><input id="kkKet" placeholder="Isi kas, ambil uang, dll"></div>
+  <div class="macts"><button class="bcan" onclick="tutupM('mKasKecil')">Batal</button><button class="bsav" onclick="simpanKasKecil()">💾 Simpan</button></div>
+</div></div>
+
+<!-- MODAL RETUR -->
+<div class="mov" id="mRetur"><div class="modal">
+  <h3>🔄 Retur Barang</h3>
+  <div class="fg"><label>Transaksi ID / Keterangan</label><input id="returRef" placeholder="ID transaksi atau keterangan"></div>
+  <div class="fg"><label>Produk</label><select id="returProduk"></select></div>
+  <div class="fg"><label>Qty Dikembalikan</label><input type="number" id="returQty" placeholder="1" min="1"></div>
+  <div class="fg"><label>Alasan Retur</label><select id="returAlasan"><option>Rusak/Cacat</option><option>Salah produk</option><option>Kadaluarsa</option><option>Pelanggan berubah pikiran</option><option>Lainnya</option></select></div>
+  <div class="fg"><label>Tindakan</label>
+    <div style="display:flex;gap:6px;margin-top:2px">
+      <button class="metode-btn active" style="flex:1" onclick="setReturTindakan('kembalikan',this)">↩ Kembalikan Stok</button>
+      <button class="metode-btn" style="flex:1" onclick="setReturTindakan('ganti',this)">🔁 Ganti Produk</button>
+    </div>
+  </div>
+  <input type="hidden" id="returTindakan" value="kembalikan">
+  <div class="macts"><button class="bcan" onclick="tutupM('mRetur')">Batal</button><button class="bsav" onclick="simpanRetur()">💾 Proses Retur</button></div>
+</div></div>
+
+<!-- MODAL CABANG -->
+<div class="mov" id="mCabang"><div class="modal">
+  <h3>🏪 Tambah Cabang</h3>
+  <div class="fg"><label>Nama Cabang</label><input id="cabNama" placeholder="Cabang Utama, Cabang 2, dll"></div>
+  <div class="fg"><label>Alamat</label><input id="cabAlamat" placeholder="Jl. Mawar No. 2"></div>
+  <div class="fg"><label>Kasir Penanggung Jawab</label><input id="cabKasir" placeholder="Nama kasir"></div>
+  <div class="macts"><button class="bcan" onclick="tutupM('mCabang')">Batal</button><button class="bsav" onclick="simpanCabang()">💾 Simpan</button></div>
+</div></div>
+
+<!-- MODAL PILIH PELANGGAN (saat bayar) -->
+<div class="mov" id="mPilihPelanggan"><div class="modal">
+  <h3>🎁 Pilih Pelanggan (Poin)</h3>
+  <input type="text" id="cariPelanggan" placeholder="Cari nama pelanggan..." oninput="renderPilihPelanggan()" style="width:100%;padding:9px 12px;border:1.5px solid var(--brd);border-radius:8px;font-size:13px;font-family:inherit;outline:none;background:var(--inp);color:var(--txt);margin-bottom:10px">
+  <div id="daftarPilihPelanggan" style="max-height:260px;overflow-y:auto;"></div>
+  <div class="macts"><button class="bcan" onclick="clearPelangganTerpilih()">Tanpa Pelanggan</button><button class="bcan" onclick="tutupM('mPilihPelanggan')">Tutup</button></div>
+</div></div>
+
+<!-- PRINT AREA (hidden, for thermal print) -->
+<div class="print-area" id="printArea"></div>
+
+<audio id="beepOk" preload="auto"></audio>
+<script src="js/01-core.js"></script>
+<script src="js/02-auth.js"></script>
+<script src="js/03-kasir.js"></script>
+<script src="js/04-produk.js"></script>
+<script src="js/05-validasi.js"></script>
+<script src="js/06-hutang-supplier.js"></script>
+<script src="js/07-void-laporan.js"></script>
+<script src="js/08-import-export.js"></script>
+<script src="js/09-backup-update.js"></script>
+<script src="js/10-fitur-v4.js"></script>
+<script src="js/11-override-transaksi.js"></script>
+<script src="js/12-fitur-v5.js"></script>
+</body>
+</html>
