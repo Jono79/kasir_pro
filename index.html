@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Kasir Pro">
 <link rel="manifest" href="manifest.json">
 <title>Kasir Warung Pro</title>
-<meta name="app-version" content="10.1.0">
+<meta name="app-version" content="10.2.0">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -772,6 +772,10 @@
   <button class="btn-sec" style="width:100%;margin-bottom:8px" onclick="tambahBeliItem()">+ Tambah Item</button>
   <div class="fg"><label>Total Beli (Rp)</label><input type="number" id="beliTotal" placeholder="Auto hitung" readonly style="background:var(--gl2)"></div>
   <div class="fg"><label>Catatan</label><input id="beliCatatan" placeholder="Opsional"></div>
+  <div class="fg" style="display:flex;align-items:center;gap:8px;background:var(--gl2);padding:10px;border-radius:8px;">
+    <input type="checkbox" id="beliBelumLunas" style="width:18px;height:18px;">
+    <label for="beliBelumLunas" style="margin:0;font-size:12px;">💳 Belum dibayar (hutang ke supplier)</label>
+  </div>
   <div class="macts"><button class="bcan" onclick="tutupM('mPembelian')">Batal</button><button class="bsav" onclick="simpanPembelian()">💾 Simpan & Update Stok</button></div>
 </div></div>
 

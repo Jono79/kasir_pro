@@ -51,6 +51,12 @@ function prediksiHabisDalam(p){
   return hariSisa;
 }
 
+// ===== KONSTANTA PERFORMA =====
+const PRODUK_PAGE_SIZE = 40;
+let _produkPage = 0;
+let _produkList = [];
+let _produkScrollHandler = null;
+
 function renderProduk(){
   const q=(document.getElementById('searchP').value||'').toLowerCase();
   const pg=document.getElementById('pgrid');
@@ -60,87 +66,65 @@ function renderProduk(){
     return cariOk&&katOk;
   });
   const _lakuMap=sortMode==='terlaris'?hitungTotalLaku():null;
-  if(sortMode==='az'){
-    list=list.slice().sort((a,b)=>a.nama.localeCompare(b.nama,'id'));
-  }else if(sortMode==='terlaris'){
-    list=list.slice().sort((a,b)=>(_lakuMap[b.id]||0)-(_lakuMap[a.id]||0));
-  }
+  if(sortMode==='az'){list=list.slice().sort((a,b)=>a.nama.localeCompare(b.nama,'id'));}
+  else if(sortMode==='terlaris'){list=list.slice().sort((a,b)>(_lakuMap[b.id]||0)-(_lakuMap[a.id]||0));}
   if(!list.length){pg.innerHTML='<div class="empty-s"><div class="ei">🔍</div><p>Produk tidak ditemukan</p></div>';return;}
-  
-  // Saran restok
   const lowList=list.filter(p=>!p.timbang&&p.stok<=(p.minStok||5)&&p.stok>=0);
   let alertHTML='';
   if(lowList.length){
-    alertHTML=`<div style="background:#fff3e0;border-bottom:1.5px solid #fed7aa;padding:8px 12px;font-size:11px;font-weight:700;color:#92400e;display:flex;align-items:center;gap:8px;flex-shrink:0;">
-      ⚠️ Stok hampir habis: ${lowList.map(p=>`<span style="background:var(--r);color:#fff;padding:1px 6px;border-radius:4px">${p.nama} (${p.stok})</span>`).join(' ')}
-    </div>`;
+    alertHTML=`<div style="background:#fff3e0;border-bottom:1.5px solid #fed7aa;padding:8px 12px;font-size:11px;font-weight:700;color:#92400e;display:flex;align-items:center;gap:8px;flex-shrink:0;">⚠️ Stok hampir habis: ${lowList.map(p=>`<span style="background:var(--r);color:#fff;padding:1px 6px;border-radius:4px">${p.nama} (${p.stok})</span>`).join(' ')}</div>`;
   }
-  
-  pg.innerHTML=alertHTML+list.map(p=>{
+  _produkList=list;
+  _produkPage=0;
+  if(_produkScrollHandler){pg.removeEventListener('scroll',_produkScrollHandler);_produkScrollHandler=null;}
+  pg.innerHTML=alertHTML+'<div id="produkItems"></div>';
+  _renderProdukBatch(_lakuMap);
+  if(_produkList.length>PRODUK_PAGE_SIZE){
+    _produkScrollHandler=()=>{if(pg.scrollTop+pg.clientHeight>=pg.scrollHeight-200)_renderProdukBatch(_lakuMap);};
+    pg.addEventListener('scroll',_produkScrollHandler,{passive:true});
+  }
+}
+
+// IntersectionObserver untuk lazy loading foto — dibuat sekali, dipakai semua gambar
+const _lazyObserver=('IntersectionObserver' in window)?new IntersectionObserver(entries=>{
+  entries.forEach(e=>{if(e.isIntersecting){const img=e.target;if(img.dataset.src){img.src=img.dataset.src;delete img.dataset.src;}_lazyObserver.unobserve(img);}});
+},{rootMargin:'200px'}):null;
+
+function _renderProdukBatch(_lakuMap){
+  const start=_produkPage*PRODUK_PAGE_SIZE;
+  const batch=_produkList.slice(start,start+PRODUK_PAGE_SIZE);
+  if(!batch.length)return;
+  _produkPage++;
+  const container=document.getElementById('produkItems');
+  if(!container)return;
+  const html=batch.map(p=>{
     const inCart=keranjang.filter(i=>i.id===p.id).reduce((s,i)=>s+i.qty,0);
     const habis=!p.timbang&&p.stok<=0;
     let stokClass='stok-ok',stokTxt='Stok '+p.stok;
-    if(!p.timbang){
-      if(p.stok<=0){stokClass='stok-habis';stokTxt='Habis';}
-      else if(p.stok<=(p.minStok||5)){stokClass='stok-low';stokTxt='⚠ Sisa '+p.stok;}
-    }
-    
-    // Expired check
+    if(!p.timbang){if(p.stok<=0){stokClass='stok-habis';stokTxt='Habis';}else if(p.stok<=(p.minStok||5)){stokClass='stok-low';stokTxt='⚠ Sisa '+p.stok;}}
     let expBadge='';
-    if(p.exp){
-      const dExp=new Date(p.exp);const now=new Date();const diff=(dExp-now)/(1000*3600*24);
-      if(diff<0)expBadge='<span class="expired-badge">Expired</span>';
-      else if(diff<7)expBadge=`<span class="expired-badge">Exp ${Math.round(diff)}h</span>`;
-    }
-    
-    // Prediksi
+    if(p.exp){const dExp=new Date(p.exp);const now=new Date();const diff=(dExp-now)/(1000*3600*24);if(diff<0)expBadge='<span class="expired-badge">Expired</span>';else if(diff<7)expBadge=`<span class="expired-badge">Exp ${Math.round(diff)}h</span>`;}
     let predBadge='';
-    if(!p.timbang&&p.stok>0){
-      const hari=prediksiHabisDalam(p);
-      if(hari!==null){
-        if(hari<=3)predBadge=`<span class="prediksi-badge prediksi-merah">📉 Habis ~${hari} hari</span>`;
-        else if(hari<=7)predBadge=`<span class="prediksi-badge prediksi-kuning">📉 Habis ~${hari} hari</span>`;
-      }
-    }
-    
-    // Promo
-    let promoBadge='';
-    if(p.promo&&p.promoHarga){promoBadge=`<span class="promo-badge">🏷 Promo</span>`;}
-    
-    // Badge terlaris (saat mode sort Terlaris aktif)
+    if(!p.timbang&&p.stok>0){const hari=prediksiHabisDalam(p);if(hari!==null){if(hari<=3)predBadge=`<span class="prediksi-badge prediksi-merah">📉 Habis ~${hari} hari</span>`;else if(hari<=7)predBadge=`<span class="prediksi-badge prediksi-kuning">📉 Habis ~${hari} hari</span>`;}}
+    let promoBadge=p.promo&&p.promoHarga?'<span class="promo-badge">🏷 Promo</span>':'';
     let terlarisBadge='';
-    if(sortMode==='terlaris'){
-      const laku=_lakuMap[p.id]||0;
-      if(laku>0)terlarisBadge=`<span class="hbadge" style="background:var(--o)">🔥 ${laku} terjual</span>`;
-    }
-    
-    // Grosir info
-    let grosirBadge='';
-    if(p.grosir&&p.grosirMin&&inCart>=p.grosirMin){grosirBadge='<span class="hbadge">Grosir</span>';}
-    
+    if(sortMode==='terlaris'){const laku=(_lakuMap&&_lakuMap[p.id])||0;if(laku>0)terlarisBadge=`<span class="hbadge" style="background:var(--o)">🔥 ${laku} terjual</span>`;}
     const hargaAktif=p.promo&&p.promoHarga?p.promoHarga:p.harga;
-    const icoHTML=p.fotoUrl?`<img src="${p.fotoUrl}" style="width:42px;height:42px;border-radius:10px;object-fit:cover;flex-shrink:0">`:`<div class="pcard-ico ${p.timbang?'timbang':''}">${p.kat==='Mie & Pasta'?'🍜':p.kat==='Minuman'?'🥤':p.kat==='Snack'?'🍟':p.kat==='Rokok'?'🚬':p.kat==='Sembako'?'🌾':p.kat==='Kebersihan'?'🧹':p.kat==='Sayur & Buah'?'🥬':p.kat==='Daging & Ikan'?'🥩':'📦'}</div>`;
-    
-    return `<div class="pcard ${habis?'habis':''} ${p.fav?'fav-item':''} ${p.timbang?'timbang':''}" onclick="addProduk(${p.id})" onlongpress="">
-      ${icoHTML}
-      <div class="pcard-body">
-        <div class="pn">${p.nama}</div>
-        <div class="prow2">
-          <span class="pkb">${p.kat}</span>
-          ${!p.timbang?`<span class="ps ${stokClass}">${stokTxt}</span>`:'<span class="timbang-badge">⚖ Timbang</span>'}
-          ${expBadge}${promoBadge}${predBadge}${terlarisBadge}
-        </div>
-      </div>
-      <div class="pcard-right">
-        <div class="ph ${p.timbang?'tim':''}">${fRp(hargaAktif)}${p.timbang?'/kg':''}</div>
-        ${p.promo&&p.promoHarga?`<div style="font-size:10px;color:var(--gray);text-decoration:line-through">${fRp(p.harga)}</div>`:''}
-        ${p.grosir?`<div style="font-size:9px;color:var(--o);font-weight:700">${fRp(p.grosir)} ×${p.grosirMin}</div>`:''}
-        ${inCart>0?`<div style="font-size:10px;font-weight:700;color:var(--r);background:var(--rl);padding:2px 6px;border-radius:4px">🛒 ${inCart}</div>`:''}
-        <button class="padd ${habis?'':''}" onclick="event.stopPropagation();addProduk(${p.id})" ${habis?'disabled':''}>+</button>
-      </div>
-    </div>`;
+    // Lazy loading: pakai data-src bukan src, foto di-load lewat IntersectionObserver saat masuk viewport
+    const icoHTML=p.fotoUrl
+      ?`<img data-src="${p.fotoUrl}" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" class="lazy-img" style="width:42px;height:42px;border-radius:10px;object-fit:cover;flex-shrink:0">`
+      :`<div class="pcard-ico ${p.timbang?'timbang':''}">${p.kat==='Mie & Pasta'?'🍜':p.kat==='Minuman'?'🥤':p.kat==='Snack'?'🍟':p.kat==='Rokok'?'🚬':p.kat==='Sembako'?'🌾':p.kat==='Kebersihan'?'🧹':p.kat==='Sayur & Buah'?'🥬':p.kat==='Daging & Ikan'?'🥩':'📦'}</div>`;
+    return `<div class="pcard ${habis?'habis':''} ${p.fav?'fav-item':''} ${p.timbang?'timbang':''}" onclick="addProduk(${p.id})">${icoHTML}<div class="pcard-body"><div class="pn">${p.nama}</div><div class="prow2"><span class="pkb">${p.kat}</span>${!p.timbang?`<span class="ps ${stokClass}">${stokTxt}</span>`:'<span class="timbang-badge">⚖ Timbang</span>'}${expBadge}${promoBadge}${predBadge}${terlarisBadge}</div></div><div class="pcard-right"><div class="ph ${p.timbang?'tim':''}">${fRp(hargaAktif)}${p.timbang?'/kg':''}</div>${p.promo&&p.promoHarga?`<div style="font-size:10px;color:var(--gray);text-decoration:line-through">${fRp(p.harga)}</div>`:''}${p.grosir?`<div style="font-size:9px;color:var(--o);font-weight:700">${fRp(p.grosir)} ×${p.grosirMin}</div>`:''}${inCart>0?`<div style="font-size:10px;font-weight:700;color:var(--r);background:var(--rl);padding:2px 6px;border-radius:4px">🛒 ${inCart}</div>`:''}<button class="padd" onclick="event.stopPropagation();addProduk(${p.id})" ${habis?'disabled':''}>+</button></div></div>`;
   }).join('');
+  container.insertAdjacentHTML('beforeend',html);
+  if(_lazyObserver){container.querySelectorAll('img.lazy-img:not([data-observed])').forEach(img=>{img.dataset.observed='1';_lazyObserver.observe(img);});}
+  else{container.querySelectorAll('img.lazy-img').forEach(img=>{if(img.dataset.src)img.src=img.dataset.src;});}
+  const sisanya=_produkList.length-_produkPage*PRODUK_PAGE_SIZE;
+  let infoEl=document.getElementById('produkLoadMore');
+  if(sisanya>0){if(!infoEl)container.insertAdjacentHTML('afterend','<div id="produkLoadMore" style="text-align:center;padding:10px;font-size:11px;color:var(--gray)">Scroll ke bawah untuk lihat lebih banyak...</div>');}
+  else{if(infoEl)infoEl.remove();if(_produkScrollHandler){document.getElementById('pgrid')?.removeEventListener('scroll',_produkScrollHandler);_produkScrollHandler=null;}}
 }
+
 
 // ============= TIMBANG =============
 let _timProduk=null,_timUnit='kg';

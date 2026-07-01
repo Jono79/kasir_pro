@@ -30,6 +30,13 @@ function imporDataJSON(e){
         // Hapus meta fields
         delete data._versiApp;delete data._waktuBackup;delete data._info;
         DB=data;
+        // BUG FIX: backup lama (sebelum fitur seperti Log Aktivitas dibuat) tidak
+        // punya field activityLog/bundling/cabang/dll. Tanpa baris ini, field itu
+        // akan tetap undefined sampai user kebetulan reload lagi nanti — bikin
+        // fitur seperti Log Aktivitas kelihatan "tidak berfungsi" padahal cuma
+        // datanya belum terisi default.
+        setDefaultDB();
+        catatLog('Restore Data', 'Data dipulihkan dari file backup: '+f.name);
         saveDB();
         showNotif('✅ Data berhasil direstore! Halaman akan reload...');
         setTimeout(()=>location.reload(),1500);

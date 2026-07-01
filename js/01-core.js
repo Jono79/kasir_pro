@@ -123,7 +123,13 @@ function _lsSet(d){try{localStorage.setItem(DB_KEY,JSON.stringify(d));return tru
 function _openIDB(){return new Promise((res,rej)=>{try{const r=indexedDB.open('KasirWarungProV4',1);r.onupgradeneeded=e=>{try{e.target.result.createObjectStore('kv',{keyPath:'k'});}catch(_){}};r.onsuccess=e=>res(e.target.result);r.onerror=()=>rej();}catch(e){rej(e);}});}
 async function _idbGet(){try{if(!_idbStore)_idbStore=await _openIDB();return new Promise((res,rej)=>{const tx=_idbStore.transaction('kv','readonly');const r=tx.objectStore('kv').get(DB_KEY);r.onsuccess=()=>res(r.result?r.result.v:null);r.onerror=()=>rej();});}catch(e){return null;}}
 async function _idbSet(d){try{if(!_idbStore)_idbStore=await _openIDB();return new Promise((res,rej)=>{const tx=_idbStore.transaction('kv','readwrite');tx.objectStore('kv').put({k:DB_KEY,v:d});tx.oncomplete=()=>res(true);tx.onerror=()=>rej();});}catch(e){return false;}}
-function saveDB(){_lsSet(DB);_idbSet(DB);}
+function saveDB(){
+  // Trim riwayat stok supaya tidak membengkak tak terbatas
+  if(DB.riwayatStok&&DB.riwayatStok.length>5000){
+    DB.riwayatStok=DB.riwayatStok.slice(-5000);
+  }
+  _lsSet(DB);_idbSet(DB);
+}
 
 // ============= LOG AKTIVITAS — v6 FIX =============
 // Pencatat audit trail terpusat: siapa melakukan apa, kapan.
@@ -249,6 +255,7 @@ function setDefaultDB(){
   if(DB.shiftAktif===undefined)DB.shiftAktif=null;
   // v6 new
   if(!DB.activityLog)DB.activityLog=[];
+  if(!DB.hutangSupplier)DB.hutangSupplier=[]; // hutang WARUNG ke supplier (beda dari DB.hutang yang piutang pelanggan)
 }
 
 async function loadDB(){

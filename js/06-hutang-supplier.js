@@ -1,20 +1,82 @@
 // ============= RIWAYAT STOK =============
+const MAKS_RIWAYAT_STOK = 5000;
+
 function renderRiwayatStok(){
   const list=document.getElementById('riwayatStokList');
-  if(!DB.riwayatStok.length){list.innerHTML='<div class="empty-s"><div class="ei">📜</div><p>Belum ada riwayat</p></div>';return;}
-  list.innerHTML=[...DB.riwayatStok].reverse().map(r=>`
+  const total=DB.riwayatStok.length;
+
+  // Filter controls — inject sekali ke dalam page-body, sebelum list
+  let ctrl=document.getElementById('riwayatStokCtrl');
+  if(!ctrl){
+    ctrl=document.createElement('div');
+    ctrl.id='riwayatStokCtrl';
+    ctrl.style.cssText='padding:8px 10px;display:flex;gap:6px;flex-wrap:wrap;align-items:center;border-bottom:1px solid var(--brd);flex-shrink:0;';
+    ctrl.innerHTML=`
+      <select id="rsFilterJenis" onchange="renderRiwayatStok()" style="flex:1;min-width:100px;padding:6px;border:1.5px solid var(--brd);border-radius:7px;background:var(--inp);color:var(--txt);font-size:11px;">
+        <option value="">Semua Jenis</option>
+        <option value="masuk">📥 Masuk</option>
+        <option value="keluar">📤 Keluar</option>
+      </select>
+      <input id="rsFilterNama" placeholder="Cari nama produk..." oninput="renderRiwayatStok()" style="flex:2;min-width:120px;padding:6px;border:1.5px solid var(--brd);border-radius:7px;background:var(--inp);color:var(--txt);font-size:11px;">
+      <button onclick="eksporRiwayatStokCSV()" style="padding:6px 10px;border:1.5px solid var(--g);border-radius:7px;background:transparent;color:var(--g);font-size:11px;font-weight:700;white-space:nowrap;">⬇ CSV</button>`;
+    list.parentNode.insertBefore(ctrl, list);
+  }
+
+  if(!total){
+    list.innerHTML='<div class="empty-s"><div class="ei">📜</div><p>Belum ada riwayat stok</p></div>';
+    return;
+  }
+
+  // Ambil nilai filter
+  const filterJenis=document.getElementById('rsFilterJenis')?.value||'';
+  const filterNama=(document.getElementById('rsFilterNama')?.value||'').toLowerCase();
+
+  let data=[...DB.riwayatStok].reverse();
+  if(filterJenis)data=data.filter(r=>r.jenis===filterJenis);
+  if(filterNama)data=data.filter(r=>(r.nama||'').toLowerCase().includes(filterNama));
+
+  const tampil=data.slice(0,300);
+  const sisanya=data.length-tampil.length;
+  const infoText=`${total.toLocaleString('id')} entri tersimpan (maks 5.000)${data.length<total?' · '+data.length.toLocaleString('id')+' sesuai filter':''}`;
+
+  list.innerHTML=`<div style="padding:6px 12px;font-size:10px;color:var(--gray);border-bottom:1px solid var(--brd);">${infoText}</div>`+
+  tampil.map(r=>`
     <div class="riwayat-stok-item">
       <div class="rsi-ico ${r.jenis==='masuk'?'rsi-masuk':'rsi-keluar'}">${r.jenis==='masuk'?'📥':'📤'}</div>
       <div class="rsi-body">
         <div style="font-weight:700;color:var(--txt)">${r.nama}</div>
-        <div style="font-size:10px;color:var(--gray)">${fTgl(r.waktu)} · ${r.ref||'-'}</div>
+        <div style="font-size:10px;color:var(--gray)">${fTgl(r.waktu)} ${fJam(r.waktu)} · ${r.ref||'-'}</div>
       </div>
       <div style="text-align:right">
         <div class="rsi-qty ${r.jenis==='masuk'?'rsi-masuk-txt':'rsi-keluar-txt'}">${r.jenis==='masuk'?'+':'-'}${r.qty}</div>
         <div style="font-size:10px;color:var(--gray)">${r.stokAwal}→${r.stokAkhir}</div>
       </div>
-    </div>`).join('');
+    </div>`).join('')+
+  (sisanya>0?`<div style="text-align:center;padding:10px;font-size:11px;color:var(--gray)">+${sisanya.toLocaleString('id')} entri lagi — gunakan filter atau Export CSV untuk lihat semua</div>`:'');
 }
+
+function eksporRiwayatStokCSV(){
+  if(!DB.riwayatStok.length){showNotif('Belum ada riwayat stok',1);return;}
+  const headers=['Waktu','Produk','Jenis','Qty','Stok Awal','Stok Akhir','Referensi'];
+  const rows=DB.riwayatStok.map(r=>[
+    new Date(r.waktu).toLocaleString('id-ID'),
+    r.nama||'',
+    r.jenis==='masuk'?'Masuk':'Keluar',
+    r.qty,
+    r.stokAwal,
+    r.stokAkhir,
+    (r.ref||'').replace(/"/g,'""')
+  ]);
+  const csv=[headers,...rows].map(r=>r.map(v=>'"'+String(v)+'"').join(',')).join('\n');
+  const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='riwayat_stok_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),3000);
+  showNotif('✅ Riwayat stok ('+DB.riwayatStok.length+' entri) diexport!');
+}
+
 
 // ============= STOK OPNAME =============
 let _opnameData={};
@@ -87,15 +149,55 @@ function hapusHutang(i){konfirmasi('Hapus data hutang?',()=>{DB.hutang.splice(i,
 function renderSupplier(){
   const list=document.getElementById('supplierList');
   if(!DB.supplier.length){list.innerHTML='<div class="empty-s"><div class="ei">🏭</div><p>Belum ada supplier</p></div>';return;}
-  list.innerHTML=DB.supplier.map((s,i)=>`
+  list.innerHTML=DB.supplier.map((s,i)=>{
+    const hutangSup=DB.hutangSupplier.filter(h=>h.supplier===s.nama&&!h.lunas).reduce((sum,h)=>sum+h.nominal,0);
+    return `
     <div class="sup-card">
       <div class="sup-ico">🏭</div>
-      <div class="sup-body"><div class="sup-nama">${s.nama}</div><div class="sup-detail">📞 ${s.kontak||'-'} · ${s.produk||'-'}</div></div>
+      <div class="sup-body"><div class="sup-nama">${s.nama}</div><div class="sup-detail">📞 ${s.kontak||'-'} · ${s.produk||'-'}</div>
+        ${hutangSup>0?`<div style="font-size:11px;font-weight:700;color:var(--r);margin-top:3px;cursor:pointer" onclick="tampilkanHutangSupplier('${s.nama.replace(/'/g,"\\'")}')">💳 Hutang: ${fRp(hutangSup)} (tap untuk detail)</div>`:''}
+      </div>
       <div style="display:flex;gap:5px">
         ${s.kontak?`<button class="ab2 be" onclick="window.open('https://wa.me/${s.kontak}')">📱</button>`:''}
         <button class="ab2 bh" onclick="hapusSupplier(${i})">🗑</button>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
+}
+// ===== Hutang ke Supplier — v6 baru =====
+function tampilkanHutangSupplier(namaSupplier){
+  const list=DB.hutangSupplier.map((h,i)=>({...h,_idx:i})).filter(h=>h.supplier===namaSupplier);
+  let html=`<div style="padding:14px;"><h3 style="margin-bottom:10px;">💳 Hutang ke ${namaSupplier}</h3>`;
+  if(!list.length){
+    html+='<div class="empty-s"><div class="ei">✅</div><p>Tidak ada hutang</p></div>';
+  } else {
+    html+='<div style="display:flex;flex-direction:column;gap:6px;">';
+    [...list].reverse().forEach(h=>{
+      html+=`<div style="background:var(--card);border:1.5px solid var(--brd);border-radius:8px;padding:10px 12px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div>
+            <div style="font-size:13px;font-weight:700;${h.lunas?'text-decoration:line-through;color:var(--gray)':'color:var(--r)'}">${fRp(h.nominal)}</div>
+            <div style="font-size:10px;color:var(--gray)">${fTgl(h.waktu)}${h.catatan?' · '+h.catatan:''}</div>
+          </div>
+          ${!h.lunas?`<button class="ab2 be" onclick="lunasHutangSupplier(${h._idx});this.closest('.mov').remove();tampilkanHutangSupplier('${namaSupplier.replace(/'/g,"\\'")}')" style="font-size:10px;">Lunas</button>`:'<span style="font-size:10px;color:var(--g);font-weight:700;">✅ Lunas</span>'}
+        </div>
+      </div>`;
+    });
+    html+='</div>';
+  }
+  const totalBelumLunas=list.filter(h=>!h.lunas).reduce((s,h)=>s+h.nominal,0);
+  html+=`<div style="font-size:12px;font-weight:800;color:var(--r);margin-top:10px;">Total belum lunas: ${fRp(totalBelumLunas)}</div></div>`;
+  const modalBox=document.createElement('div');
+  modalBox.className='mov show';
+  modalBox.innerHTML=`<div class="modal" style="max-height:80vh;overflow-y:auto;">${html}<button class="bcan" style="margin-top:10px;width:100%" onclick="this.closest('.mov').remove()">Tutup</button></div>`;
+  document.body.appendChild(modalBox);
+}
+function lunasHutangSupplier(idx){
+  const h=DB.hutangSupplier[idx];if(!h)return;
+  h.lunas=true;h.tglLunas=new Date().toISOString();
+  catatLog('Lunas Hutang Supplier',h.supplier+': '+fRp(h.nominal)+' dibayar lunas');
+  saveDB();renderSupplier();
+  showNotif('✅ Hutang ke '+h.supplier+' lunas');
 }
 function simpanSupplier(){
   const nm=document.getElementById('supNama').value.trim();
@@ -133,17 +235,31 @@ function simpanPembelian(){
   if(!_beliItems.length){showNotif('Tambah item dulu',1);return;}
   const tot=_beliItems.reduce((s,it)=>s+it.qty*it.hargaBeli,0);
   const now=new Date().toISOString();
-  // Update stok
+  const perubahanModal=[];
+  // Update stok + harga modal otomatis (FITUR BARU)
   _beliItems.forEach(it=>{
     const p=DB.produk.find(x=>x.id===parseInt(it.produkId));
     if(p&&it.qty>0){
       const stokAwal=p.stok;p.stok+=it.qty;
       DB.riwayatStok.push({waktu:now,produkId:p.id,nama:p.nama,jenis:'masuk',qty:it.qty,stokAwal,stokAkhir:p.stok,ref:'Pembelian'});
+      // Update harga modal otomatis kalau beda dari sebelumnya
+      if(it.hargaBeli>0&&p.modal!==it.hargaBeli){
+        perubahanModal.push(p.nama+': '+fRp(p.modal||0)+'→'+fRp(it.hargaBeli));
+        p.modal=it.hargaBeli;
+      }
     }
   });
   const supIdx=document.getElementById('beliSup').value;
-  DB.pembelian.push({waktu:now,items:[..._beliItems],total:tot,supplier:supIdx!==''?DB.supplier[parseInt(supIdx)]?.nama||'':'-',catatan:document.getElementById('beliCatatan').value});
-  saveDB();tutupM('mPembelian');renderPembelian();renderStok();showNotif('✅ Stok diupdate!');
+  const supplierNama=supIdx!==''?DB.supplier[parseInt(supIdx)]?.nama||'':'-';
+  const belumLunas=document.getElementById('beliBelumLunas').checked;
+  DB.pembelian.push({waktu:now,items:[..._beliItems],total:tot,supplier:supplierNama,catatan:document.getElementById('beliCatatan').value,lunas:!belumLunas});
+  if(belumLunas&&supplierNama!=='-'){
+    DB.hutangSupplier.push({supplier:supplierNama,nominal:tot,waktu:now,lunas:false,catatan:document.getElementById('beliCatatan').value});
+    catatLog('Hutang ke Supplier','Hutang baru ke '+supplierNama+': '+fRp(tot));
+  }
+  if(perubahanModal.length)catatLog('Update Harga Modal','Dari pembelian: '+perubahanModal.join(', '));
+  catatLog('Pembelian Stok',(supplierNama!=='-'?'Dari '+supplierNama+': ':'')+_beliItems.length+' item · total '+fRp(tot));
+  saveDB();tutupM('mPembelian');renderPembelian();renderStok();showNotif(belumLunas?'✅ Stok diupdate, hutang supplier dicatat!':'✅ Stok & harga modal diupdate!');
 }
 function renderPembelian(){
   const list=document.getElementById('pembelianList');
@@ -151,9 +267,43 @@ function renderPembelian(){
   list.innerHTML=[...DB.pembelian].reverse().map(b=>`
     <div class="beli-card">
       <div class="beli-head"><span class="beli-tgl">${fTgl(b.waktu)} · ${b.supplier||'-'}</span><span class="beli-tot">${fRp(b.total)}</span></div>
-      <div class="beli-items">${b.items.map(it=>{const p=DB.produk.find(x=>x.id===parseInt(it.produkId));return (p?p.nama:'?')+' ×'+it.qty;}).join(', ')}</div>
+      <div class="beli-items">${b.items.map(it=>{const p=DB.produk.find(x=>x.id===parseInt(it.produkId));return (p?p.nama:'?')+' ×'+it.qty+' @'+fRp(it.hargaBeli||0);}).join(', ')}</div>
       ${b.catatan?`<div style="font-size:10px;color:var(--gray);margin-top:4px">📝 ${b.catatan}</div>`:''}
     </div>`).join('');
+}
+// ===== Riwayat harga modal per produk — v6 baru =====
+function riwayatHargaModal(produkId){
+  const pid=parseInt(produkId);
+  const riwayat=[];
+  DB.pembelian.forEach(b=>{
+    b.items.forEach(it=>{
+      if(parseInt(it.produkId)===pid&&it.hargaBeli>0){
+        riwayat.push({waktu:b.waktu,harga:it.hargaBeli,supplier:b.supplier,qty:it.qty});
+      }
+    });
+  });
+  return riwayat.sort((a,b)=>new Date(b.waktu)-new Date(a.waktu));
+}
+function tampilkanRiwayatModal(produkId){
+  const p=DB.produk.find(x=>x.id===parseInt(produkId));if(!p)return;
+  const riwayat=riwayatHargaModal(produkId);
+  let html=`<div style="padding:14px;"><h3 style="margin-bottom:10px;">📈 Riwayat Harga Modal: ${p.nama}</h3>`;
+  if(!riwayat.length){
+    html+='<div class="empty-s"><div class="ei">📊</div><p>Belum ada riwayat pembelian untuk produk ini</p></div>';
+  } else {
+    html+='<div style="display:flex;flex-direction:column;gap:6px;">';
+    riwayat.forEach(r=>{
+      html+=`<div style="background:var(--card);border:1.5px solid var(--brd);border-radius:8px;padding:8px 12px;display:flex;justify-content:space-between;">
+        <div><div style="font-size:12px;font-weight:700">${fRp(r.harga)}/pcs</div><div style="font-size:10px;color:var(--gray)">${fTgl(r.waktu)} · ${r.supplier||'-'} · qty ${r.qty}</div></div>
+      </div>`;
+    });
+    html+='</div>';
+  }
+  html+=`<div style="font-size:11px;color:var(--gray);margin-top:10px;">Harga modal saat ini: <b>${fRp(p.modal||0)}</b></div></div>`;
+  const modalBox=document.createElement('div');
+  modalBox.className='mov show';
+  modalBox.innerHTML=`<div class="modal" style="max-height:80vh;overflow-y:auto;">${html}<button class="bcan" style="margin-top:10px;width:100%" onclick="this.closest('.mov').remove()">Tutup</button></div>`;
+  document.body.appendChild(modalBox);
 }
 
 // ============= PENGELUARAN =============

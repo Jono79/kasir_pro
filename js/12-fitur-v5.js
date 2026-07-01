@@ -301,6 +301,10 @@ const _renderProdukOrig=renderProduk;
 renderProduk=function(){
   _renderProdukOrig();
   // Inject bundling produk into grid
+  // BUG FIX: sebelumnya pakai class CSS yang tidak ada ('prod-card','pc-img',
+  // 'pc-nama','pc-harga','pc-top') sehingga card paket tampil tanpa styling
+  // sama sekali (numpuk, kecil, posisi acak). Sekarang disamakan persis
+  // dengan struktur class 'pcard' yang dipakai produk biasa di 04-produk.js.
   if(!DB.bundling||!DB.bundling.length)return;
   const q=(document.getElementById('searchP')?.value||'').toLowerCase();
   const grid=document.getElementById('pgrid');if(!grid)return;
@@ -308,9 +312,20 @@ renderProduk=function(){
   if(!filtered.length)return;
   filtered.forEach(b=>{
     const div=document.createElement('div');
-    div.className='prod-card';
-    div.innerHTML=`<div class="pc-top"><span class="pc-img" style="font-size:28px">${b.emoji||'🎁'}</span><span class="bundling-badge" style="position:absolute;top:4px;right:4px;font-size:8px">PAKET</span></div><div class="pc-nama">${b.nama}</div><div class="pc-harga">${fRp(b.harga)}</div>`;
-    div.style.position='relative';
+    div.className='pcard';
+    div.innerHTML=`
+      <div class="pcard-ico">${b.emoji||'🎁'}</div>
+      <div class="pcard-body">
+        <div class="pn">${b.nama}</div>
+        <div class="prow2">
+          <span class="pkb" style="background:var(--o);color:#fff">PAKET</span>
+          <span class="pkb">${b.kategori||'Paket'}</span>
+        </div>
+      </div>
+      <div class="pcard-right">
+        <div class="ph">${fRp(b.harga)}</div>
+        <button class="padd" onclick="event.stopPropagation()">+</button>
+      </div>`;
     div.onclick=()=>{
       keranjang.push({id:'bnd_'+b.id,nama:b.nama,harga:b.harga,hargaCustom:null,qty:1,emoji:b.emoji,isBundling:true});
       updateFabCount();showNotif('🎁 '+b.nama+' ditambah!');

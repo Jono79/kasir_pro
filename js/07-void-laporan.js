@@ -136,16 +136,41 @@ function renderLaporan(){
 }
 function renderArsip(){
   const al=document.getElementById('lapArsip');
-  if(!DB.arsip.length){al.innerHTML='<div class="empty-s"><div class="ei">📁</div><p>Belum ada arsip</p></div>';return;}
-  al.innerHTML=[...DB.arsip].reverse().map(a=>`
+  const ukuran=ukuranDataKB();
+  const ukuranInfo=`<div style="padding:8px 14px;font-size:11px;color:var(--gray);display:flex;justify-content:space-between;align-items:center;">
+    <span>💾 Data tersimpan: <b>${ukuran>=1024?(ukuran/1024).toFixed(1)+' MB':ukuran+' KB'}</b> (batas browser umumnya ~5 MB)</span>
+  </div>`;
+  if(!DB.arsip.length){al.innerHTML=ukuranInfo+'<div class="empty-s"><div class="ei">📁</div><p>Belum ada arsip</p></div>';return;}
+  const bersihkanRow=DB.arsip.length>=10?`
+    <div style="margin:8px 10px;padding:10px 14px;background:#fff3e0;border:1.5px solid #fed7aa;border-radius:11px;font-size:11px;color:#92400e;">
+      📦 Sudah ada ${DB.arsip.length} arsip tersimpan. Pastikan sudah backup (file otomatis terunduh tiap tutup kasir), lalu bisa hapus arsip lama lewat tombol 🗑 di tiap kartu di bawah.
+    </div>`:'';
+  al.innerHTML=ukuranInfo+bersihkanRow+[...DB.arsip].map((a,i)=>i).reverse().map(idx=>{
+    const a=DB.arsip[idx];
+    return `
     <div style="background:var(--card);border:1.5px solid var(--brd);border-radius:11px;padding:12px 14px;margin:8px 10px;">
-      <div style="font-size:12px;font-weight:800;color:var(--txt);margin-bottom:6px">📅 ${fTglLengkap(a.waktu)}</div>
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+        <div style="font-size:12px;font-weight:800;color:var(--txt);">📅 ${fTglLengkap(a.waktu)}</div>
+        <div style="display:flex;gap:4px;">
+          <button class="ab2 bh" style="font-size:10px;padding:3px 7px;" onclick="downloadArsipSatuan(${idx})">📥</button>
+          <button class="ab2 bh" style="font-size:10px;padding:3px 7px;color:var(--r);border-color:var(--r);" onclick="hapusArsipSatuan(${idx})">🗑</button>
+        </div>
+      </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <div class="sc"><div class="sl">Omzet</div><div class="sv">${fRp(a.omzet)}</div></div>
         <div class="sc"><div class="sl">Laba</div><div class="sv">${fRp(a.laba)}</div></div>
         <div class="sc"><div class="sl">Trx</div><div class="sv">${a.jml}</div></div>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('')+`
+    <div style="margin:14px 10px;padding:12px 14px;background:var(--card);border:1.5px solid var(--brd);border-radius:11px;">
+      <div style="font-size:11px;font-weight:700;color:var(--txt);margin-bottom:8px;">🧹 Bersihkan Arsip Lama Sekaligus</div>
+      <div style="display:flex;gap:8px;">
+        <input type="date" id="arsipBatasTgl" style="flex:1;padding:7px;border:1.5px solid var(--brd);border-radius:7px;background:var(--inp);color:var(--txt);font-size:12px;">
+        <button class="ab2 bh" style="font-size:11px;padding:7px 12px;" onclick="if(document.getElementById('arsipBatasTgl').value)hapusArsipSebelum(document.getElementById('arsipBatasTgl').value);else showNotif('Pilih tanggal dulu',1);">Hapus Sebelum Ini</button>
+      </div>
+      <div style="font-size:10px;color:var(--gray);margin-top:5px;">Menghapus semua arsip SEBELUM tanggal yang dipilih. Pastikan sudah backup dulu.</div>
+    </div>`;
 }
 function renderLabaRugi(){
   const lr=document.getElementById('lapLabaRugi');
@@ -217,9 +242,59 @@ function prosesTutupKasir(){
   if(!trx.length){showNotif('Belum ada transaksi',1);return;}
   const omzet=trx.reduce((s,t)=>s+t.total,0);
   const laba=trx.reduce((s,t)=>s+t.items.reduce((ss,i)=>{const p=DB.produk.find(x=>x.id===i.id);const h=i.hargaCustom!==null?i.hargaCustom:i.harga;return ss+(h-(p?p.modal||0:0))*(i.qty||1);},0),0);
-  DB.arsip.push({waktu:new Date().toISOString(),omzet,laba,jml:trx.length,kasir:me?.nama||'-',transaksi:[...DB.transaksi]});
+  const arsipBaru={waktu:new Date().toISOString(),omzet,laba,jml:trx.length,kasir:me?.nama||'-',transaksi:[...DB.transaksi]};
+  DB.arsip.push(arsipBaru);
   DB.transaksi=[];
-  saveDB();updateTopOmzet();renderTutup();showNotif('✅ Kasir ditutup & disimpan!');
+  catatLog('Tutup Kasir', trx.length+' transaksi · Omzet '+fRp(omzet)+' · Laba '+fRp(laba));
+  saveDB();updateTopOmzet();renderTutup();
+  // Auto-backup arsip hari ini ke file JSON, supaya data tidak hilang
+  // walau localStorage suatu saat penuh/bermasalah.
+  _downloadArsipSatuan(arsipBaru);
+  showNotif('✅ Kasir ditutup, disimpan & backup arsip diunduh!');
+}
+// ===== Auto-backup & manajemen ukuran data arsip — v6 baru =====
+function _downloadArsipSatuan(arsip){
+  const tgl=new Date(arsip.waktu).toISOString().slice(0,10);
+  const payload={_info:'Arsip Kasir Warung Pro — backup otomatis saat tutup kasir',_tanggal:tgl,...arsip};
+  const json=JSON.stringify(payload,null,2);
+  const blob=new Blob([json],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`arsip_${tgl}.json`;
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),3000);
+}
+function ukuranDataKB(){
+  try{
+    const json=JSON.stringify(DB);
+    return Math.round(new Blob([json]).size/1024);
+  }catch(e){return 0;}
+}
+function hapusArsipSebelum(tanggalBatas){
+  const batas=new Date(tanggalBatas).getTime();
+  const sebelum=DB.arsip.length;
+  DB.arsip=DB.arsip.filter(a=>new Date(a.waktu).getTime()>=batas);
+  const dihapus=sebelum-DB.arsip.length;
+  if(dihapus>0){
+    catatLog('Hapus Arsip Lama', dihapus+' arsip sebelum '+new Date(tanggalBatas).toLocaleDateString('id-ID')+' dihapus');
+    saveDB();
+    showNotif('🗑 '+dihapus+' arsip lama dihapus');
+  } else {
+    showNotif('Tidak ada arsip sebelum tanggal itu',1);
+  }
+}
+function hapusArsipSatuan(idx){
+  konfirmasi('Hapus arsip ini? Pastikan sudah ada backup-nya.',()=>{
+    const a=DB.arsip[idx];if(!a)return;
+    catatLog('Hapus Arsip', new Date(a.waktu).toLocaleDateString('id-ID')+' · '+a.jml+' transaksi · '+fRp(a.omzet));
+    DB.arsip.splice(idx,1);saveDB();renderArsip();
+    showNotif('🗑 Arsip dihapus');
+  });
+}
+function downloadArsipSatuan(idx){
+  const a=DB.arsip[idx];if(!a)return;
+  _downloadArsipSatuan(a);
+  showNotif('📥 Arsip diunduh!');
 }
 function kirimRekapWA(){eksporRekapWA();}
 function kirimWA(){
