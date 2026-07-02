@@ -43,6 +43,7 @@ body{background:var(--bg);color:var(--txt);}
 
 /* ====== APP SHELL ====== */
 #app{display:none;height:100%;flex-direction:column;}
+.main-content{display:flex;flex-direction:column;flex:1;overflow:hidden;min-width:0;}
 #app.show{display:flex;}
 
 /* ====== TOPBAR ====== */
@@ -661,125 +662,73 @@ canvas{width:100%;display:block;}
 /* ============================================================
    RESPONSIVE — TABLET, LAPTOP, DAN ROTASI — v6 baru
    ============================================================
-   Breakdown:
-   - < 600px   : HP portrait (default, sudah ada)
-   - 600–959px : HP landscape / tablet kecil
-   - 960–1279px: Tablet / iPad
-   - 1280px+   : Laptop / desktop
+   Pendekatan konservatif: HP landscape TIDAK diubah layout-nya
+   (cukup tweak ringan). Layout 2-panel hanya untuk tablet asli
+   (lebar layar > 900px) supaya tidak konflik di HP landscape.
    ============================================================ */
 
-/* ---- HP Landscape (600px+) ---- */
-@media (min-width:600px){
-  /* Sidebar selalu terlihat sebagian di landscape */
-  .app-wrap{flex-direction:row;}
+/* ---- HP Landscape — tweak ringan saja, TIDAK ubah layout ---- */
+@media (max-width:899px) and (orientation:landscape){
+  /* Header lebih compact */
+  .topbar{padding:4px 10px;}
+  .topbar h1{font-size:13px;}
+  /* Modal maks tinggi 95vh supaya tidak terpotong */
+  .modal{max-height:95vh;}
+  .bottom-sheet{max-height:90vh!important;}
+  /* Favorit bar lebih tipis */
+  .fav-bar{padding:3px 10px;}
+  /* Card produk lebih compact */
+  .pcard{padding:6px 8px;}
+  /* Login screen compact */
+  .lcard{padding:16px;}
+  /* Konten halaman bisa scroll penuh */
+  .page.active{overflow-y:auto;}
+}
+
+/* ---- Tablet asli & Desktop (900px+) — layout 2 panel ---- */
+@media (min-width:900px){
+  /* Sidebar selalu tampil di sisi kiri */
+  .app-wrap{display:flex;flex-direction:row;height:100vh;overflow:hidden;}
+  .main-content{flex:1;overflow:hidden;display:flex;flex-direction:column;}
   .sidebar{
-    position:relative;
-    width:200px;
+    position:relative!important;
+    width:210px;
+    min-width:210px;
     transform:none!important;
-    box-shadow:none;
+    box-shadow:none!important;
     border-right:1.5px solid var(--brd);
     height:100vh;
-    top:0;
+    top:0!important;
+    overflow-y:auto;
   }
   .overlay{display:none!important;}
   .ham-btn{display:none!important;}
-  .topbar{padding-left:12px;}
-  /* Kasir: tampilkan produk kiri, keranjang kanan */
-  #page-kasir .kasir-wrap{
-    display:flex;
-    flex-direction:row;
-    height:100%;
-    overflow:hidden;
-  }
-  #page-kasir .kasir-left{
-    flex:1;
-    overflow-y:auto;
-    border-right:1.5px solid var(--brd);
-  }
-  /* Bottom sheet keranjang jadi panel kanan di tablet */
-  .bottom-sheet{
-    position:relative!important;
-    transform:none!important;
-    width:320px!important;
-    max-height:100%!important;
-    height:100%!important;
-    border-radius:0!important;
-    border-left:1.5px solid var(--brd);
-    box-shadow:none!important;
-    background:var(--w)!important;
-    display:flex!important;
-    flex-direction:column;
-  }
-  .bottom-sheet-drag{display:none;}
-  /* FAB keranjang disembunyikan karena keranjang selalu terlihat */
-  #fabKeranjang{display:none!important;}
+  .topbar{padding-left:14px;position:sticky;top:0;z-index:100;}
+  .pages{flex:1;overflow:hidden;}
+  .page.active{height:100%;overflow-y:auto;}
   /* Modal lebih besar */
-  .modal{max-width:500px;}
-  /* Grid produk 2 kolom */
-  .pgrid{gap:0;}
+  .modal{max-width:520px;}
+  /* FAB keranjang tetap ada di tablet (berguna) */
 }
 
-/* ---- Tablet (960px+) ---- */
-@media (min-width:960px){
-  .sidebar{width:220px;}
-  .modal{max-width:560px;}
-  .bottom-sheet{width:360px!important;}
+/* ---- Tablet besar (1100px+) ---- */
+@media (min-width:1100px){
+  .sidebar{width:230px;min-width:230px;}
+  .modal{max-width:580px;}
   /* Laporan: kartu statistik 4 kolom */
-  .lap-stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
-  /* Pengaturan: 2 kolom */
-  .sett-body{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
-  .sett-sec{margin-bottom:0;}
+  .lap-stats-row{display:grid!important;grid-template-columns:repeat(4,1fr);gap:8px;}
 }
 
 /* ---- Laptop / Desktop (1280px+) ---- */
 @media (min-width:1280px){
-  .sidebar{width:240px;}
-  .bottom-sheet{width:400px!important;}
-  .modal{max-width:600px;}
-  /* Kasir: lebih lega */
-  #page-kasir .kasir-wrap{gap:0;}
-  /* Grafik lebih besar */
+  .sidebar{width:250px;min-width:250px;}
+  .modal{max-width:620px;}
+  /* Grafik lebih tinggi */
   #grafikPeriod{height:160px!important;}
-  /* Stok & produk: 2 kolom card */
   body{font-size:14px;}
 }
 
-/* ---- Orientasi landscape untuk HP kecil (< 600px landscape) ---- */
-@media (max-width:599px) and (orientation:landscape){
-  .topbar{padding:4px 10px;}
-  .topbar h1{font-size:13px;}
-  .bottom-sheet{max-height:95vh!important;}
-  .fav-bar{padding:4px 10px;}
-  /* Kurangi padding agar muat di layar kecil landscape */
-  .pcard{padding:6px 8px;}
-  .modal{max-height:95vh;}
-  /* Login screen lebih compact */
-  .lcard{padding:16px;}
-}
-
-/* ---- Orientasi portrait paksa untuk modal (jangan rotate) ---- */
-/* Tidak perlu — kita justru DUKUNG semua orientasi */
-
-/* ---- Touch target lebih besar di tablet ---- */
-@media (min-width:600px){
-  .sb-item{padding:10px 14px;font-size:13px;}
-  .btn-p,.btn-sec{padding:9px 14px;}
-  .padd{width:34px;height:34px;font-size:18px;}
-  .pcard{padding:10px 12px;}
-  .pn{font-size:13px;}
-  /* Header fixed di desktop */
-  .topbar{position:sticky;top:0;z-index:100;}
-}
-
-/* ---- Scroll bar lebih cantik di desktop ---- */
-@media (min-width:960px){
-  ::-webkit-scrollbar{width:6px;height:6px;}
-  ::-webkit-scrollbar-track{background:var(--gl2);}
-  ::-webkit-scrollbar-thumb{background:var(--brd);border-radius:3px;}
-  ::-webkit-scrollbar-thumb:hover{background:var(--gl);}
-}
-
-/* ---- Hover effect di desktop (tidak ada di HP) ---- */
+/* ---- Hover effect (hanya di perangkat yang punya mouse) ---- */
 @media (hover:hover){
   .pcard:hover{background:var(--gf);transform:translateX(2px);transition:all 0.15s;}
   .sb-item:hover{background:rgba(255,255,255,0.12);}
@@ -787,4 +736,11 @@ canvas{width:100%;display:block;}
   .btn-sec:hover{background:var(--gp);}
   .bsav:hover{opacity:0.88;}
   .bcan:hover{background:var(--gl2);}
+}
+
+/* ---- Scroll bar cantik di desktop ---- */
+@media (min-width:900px){
+  ::-webkit-scrollbar{width:5px;height:5px;}
+  ::-webkit-scrollbar-track{background:var(--gl2);}
+  ::-webkit-scrollbar-thumb{background:var(--brd);border-radius:3px;}
 }
