@@ -41,6 +41,14 @@ prosesTransaksi=function(){
     showNotif('⚠ Uang bayar ('+fRp(bayar)+') kurang dari total ('+fRp(total)+')',1);
     return;
   }
+  // Notif WA kalau diskon besar (>30% dari subtotal)
+  if(disc>0&&sub>0&&(disc/sub)>=0.30){
+    notifWaOwnerAksi(
+      'DISKON BESAR DITERAPKAN',
+      `Diskon: ${fRp(disc)} (${Math.round(disc/sub*100)}% dari ${fRp(sub)})\nTotal dibayar: ${fRp(total)}\nKasir: ${me?.nama||'-'}`,
+      '🏷️'
+    );
+  }
   const kem=bayar-total;const now=new Date();
   const trx={id:Date.now(),waktu:now.toISOString(),items:[...keranjang.map(it=>({...it}))],subtotal:sub,diskon:disc,total,bayar,kembalian:kem,kasir:me?.nama||'-',metode,void:false,
     pelanggan:_pelangganTerpilih?.nama||null,pelangganId:_pelangganTerpilih?.id||null};
@@ -52,7 +60,7 @@ prosesTransaksi=function(){
       if(p2){const kg=it.unit==='gram'?it.berat/1000:it.unit==='ons'?it.berat/10:it.berat;DB.riwayatStok.push({waktu:now.toISOString(),produkId:p2.id,nama:p2.nama,jenis:'keluar',qty:kg+'kg',stokAwal:'-',stokAkhir:'-',ref:'Timbang #'+trx.id});}}
   });
   if(_pelangganTerpilih)tambahPoinPelanggan(_pelangganTerpilih.id,total);
-  DB.transaksi.push(trx);saveDB();tutupM('mBayar');
+  DB.transaksi.push(trx);saveDB();_catatTrxOffline(trx.id);tutupM('mBayar');
   const strSukses=buatStruk(true,trx);
   document.getElementById('suksesTotal').textContent=fRp(total);
   document.getElementById('suksesKem').textContent=metode==='tunai'?'Kembalian: '+fRp(kem):'Pembayaran: '+({'transfer':'Transfer','qris':'QRIS','kredit':'Kredit'}[metode]||metode);
@@ -83,17 +91,51 @@ prosesTransaksi=function(){
   }
 };
 
-// OVERRIDE renderSett untuk setting baru
+// ============= NOTIF WA OWNER UNTUK AKSI SENSITIF — v6 baru =============
+// Fungsi terpusat untuk kirim notifikasi WA ke owner saat ada aksi sensitif.
+// Dipanggil dari: void transaksi, hapus produk, ubah harga signifikan,
+// diskon besar, hapus user, login PIN salah berkali-kali.
+//
+// Cara kerja: buka link wa.me dengan pesan sudah terisi → kasir tinggal
+// tap Send 1x. Tidak bisa benar-benar silent (batasan WhatsApp), tapi
+// jauh lebih cepat dari kirim manual.
+//
+// Aktif HANYA kalau:
+// 1. DB.settings.waOwner sudah diisi (nomor WA owner)
+// 2. DB.settings.notifWaAksiSensitif = true (toggle di Pengaturan)
+function notifWaOwnerAksi(judul, detail, emoji='⚠️'){
+  const s=DB.settings||{};
+  if(!s.waOwner||!s.notifWaAksiSensitif)return;
+  const wa=s.waOwner.replace(/[^0-9]/g,'');
+  if(!wa)return;
+  const now=new Date().toLocaleString('id-ID',{day:'2-digit',month:'short',year:'2-digit',hour:'2-digit',minute:'2-digit'});
+  const teks=`${emoji} *${judul}*\n`+
+    `Waktu: ${now}\n`+
+    `Kasir: ${me?.nama||'-'}\n`+
+    `${detail}`;
+  // Delay kecil supaya tidak bentrok dengan WA struk yang mungkin buka duluan
+  setTimeout(()=>{
+    window.open('https://wa.me/'+wa+'?text='+encodeURIComponent(teks),'_blank');
+  },1200);
+}
+
 const _renderSettOrig=renderSett;
 renderSett=function(){
   _renderSettOrig();
   const s=DB.settings||{};
+  // Init warna custom picker
+  if(s.tema==='custom'&&s.temaCustom){
+    const picker=document.getElementById('customColorPicker');
+    if(picker)picker.value=s.temaCustom;
+  }
   const autoEl=document.getElementById('autoRekapToggle');const jamEl=document.getElementById('autoRekapJam');
   if(autoEl)autoEl.checked=!!s.autoRekap;if(jamEl)jamEl.value=s.autoRekapJam||'21:00';
   const poinRpEl=document.getElementById('poinRpPerPoin');const poinNilEl=document.getElementById('poinNilai');
   if(poinRpEl)poinRpEl.value=s.poinRpPerPoin||10000;if(poinNilEl)poinNilEl.value=s.poinNilai||50;
   const notifPelEl=document.getElementById('autoNotifWaToggle');const notifOwEl=document.getElementById('autoNotifOwnerToggle');
   if(notifPelEl)notifPelEl.checked=!!s.autoNotifWaPelanggan;if(notifOwEl)notifOwEl.checked=!!s.autoNotifWaOwner;
+  const notifSensitifEl=document.getElementById('notifWaAksiSensitifToggle');
+  if(notifSensitifEl)notifSensitifEl.checked=!!s.notifWaAksiSensitif;
   const ghEl=document.getElementById('sGithubURL');
   if(ghEl)ghEl.value=s.githubURL||'';
   const info=document.getElementById('backupInfo');

@@ -1,53 +1,131 @@
 // ============= V4 NEW FEATURES =============
 
-// GRAFIK PERIODE
+// ===== GRAFIK & LAPORAN DIPERKAYA — v6 baru =====
 let _grafikMode='mingguan';
+let _topMode='qty';
+
 function switchGrafikMode(mode,btn){
   _grafikMode=mode;
   document.querySelectorAll('.grafik-tab').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
+  if(btn)btn.classList.add('active');
   renderGrafikPeriod(mode);
+  renderPerbandinganPeriode(mode);
+}
+function switchTopMode(mode,btn){
+  _topMode=mode;
+  const qBtn=document.getElementById('topModeQty');
+  const oBtn=document.getElementById('topModeOmzet');
+  if(qBtn){qBtn.style.background=mode==='qty'?'#fff':'transparent';qBtn.style.color=mode==='qty'?'var(--g)':'#fff';qBtn.style.borderColor=mode==='qty'?'#fff':'rgba(255,255,255,0.5)';}
+  if(oBtn){oBtn.style.background=mode==='omzet'?'#fff':'transparent';oBtn.style.color=mode==='omzet'?'var(--g)':'#fff';oBtn.style.borderColor=mode==='omzet'?'#fff':'rgba(255,255,255,0.5)';}
+  renderTop10Produk();
+}
+function _getTrxAll(){
+  const fromDB=[...DB.transaksi.filter(t=>!t.void)];
+  const fromArsip=DB.arsip.flatMap(a=>(a.transaksi||[]).filter(t=>!t.void));
+  return [...fromDB,...fromArsip];
 }
 function renderGrafikPeriod(mode){
   const canvas=document.getElementById('grafikPeriod');if(!canvas)return;
   const title=document.getElementById('grafikPeriodTitle');
+  const allTrx=_getTrxAll();
   const now=new Date();let labels=[],data=[];
   if(mode==='mingguan'){
     title.textContent='📅 Omzet 7 Hari Terakhir';
-    for(let i=6;i>=0;i--){const d=new Date(now);d.setDate(d.getDate()-i);
-      labels.push(d.toLocaleDateString('id-ID',{weekday:'short',day:'numeric'}));
-      data.push(DB.transaksi.filter(t=>!t.void&&new Date(t.waktu).toDateString()===d.toDateString()).reduce((s,t)=>s+t.total,0));}
-  } else {
+    for(let i=6;i>=0;i--){const d=new Date(now);d.setDate(d.getDate()-i);labels.push(d.toLocaleDateString('id-ID',{weekday:'short',day:'numeric'}));data.push(allTrx.filter(t=>new Date(t.waktu).toDateString()===d.toDateString()).reduce((s,t)=>s+t.total,0));}
+  } else if(mode==='bulanan'){
     title.textContent='📅 Omzet 30 Hari Terakhir';
-    for(let i=29;i>=0;i--){const d=new Date(now);d.setDate(d.getDate()-i);
-      labels.push(i%5===0?d.toLocaleDateString('id-ID',{day:'numeric',month:'short'}):'');
-      data.push(DB.transaksi.filter(t=>!t.void&&new Date(t.waktu).toDateString()===d.toDateString()).reduce((s,t)=>s+t.total,0));}
+    for(let i=29;i>=0;i--){const d=new Date(now);d.setDate(d.getDate()-i);labels.push(i%5===0?d.toLocaleDateString('id-ID',{day:'numeric',month:'short'}):'');data.push(allTrx.filter(t=>new Date(t.waktu).toDateString()===d.toDateString()).reduce((s,t)=>s+t.total,0));}
+  } else if(mode==='perbulan'){
+    title.textContent='📅 Omzet 12 Bulan Terakhir';
+    for(let i=11;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);labels.push(d.toLocaleDateString('id-ID',{month:'short',year:'2-digit'}));data.push(allTrx.filter(t=>{const td=new Date(t.waktu);return td.getMonth()===d.getMonth()&&td.getFullYear()===d.getFullYear();}).reduce((s,t)=>s+t.total,0));}
   }
+  _drawBarChart(canvas,labels,data);
+}
+function _drawBarChart(canvas,labels,data,color){
   setTimeout(()=>{
     canvas.width=canvas.offsetWidth||320;canvas.height=120;
     const ctx=canvas.getContext('2d');ctx.clearRect(0,0,canvas.width,canvas.height);
     const maxV=Math.max(...data)||1;
-    const gmC=getComputedStyle(document.documentElement).getPropertyValue('--gm').trim()||'#2d6a4f';
+    const gmC=color||(getComputedStyle(document.documentElement).getPropertyValue('--gm').trim()||'#2d6a4f');
     const barW=Math.floor((canvas.width-20)/data.length)-2;const padL=10;
     data.forEach((v,i)=>{
       const x=padL+i*(barW+2);const barH=Math.round((v/maxV)*(canvas.height-24));
-      if(barH>0){const grad=ctx.createLinearGradient(0,canvas.height-24-barH,0,canvas.height-24);
-        grad.addColorStop(0,gmC);grad.addColorStop(1,gmC+'44');ctx.fillStyle=grad;
-        ctx.beginPath();ctx.roundRect?ctx.roundRect(x,canvas.height-24-barH,barW,barH,2):ctx.rect(x,canvas.height-24-barH,barW,barH);ctx.fill();}
+      if(barH>0){const grad=ctx.createLinearGradient(0,canvas.height-24-barH,0,canvas.height-24);grad.addColorStop(0,gmC);grad.addColorStop(1,gmC+'44');ctx.fillStyle=grad;ctx.beginPath();ctx.roundRect?ctx.roundRect(x,canvas.height-24-barH,barW,barH,2):ctx.rect(x,canvas.height-24-barH,barW,barH);ctx.fill();}
       if(labels[i]){ctx.fillStyle='#6b7280';ctx.font='7px sans-serif';ctx.textAlign='center';ctx.fillText(labels[i],x+barW/2,canvas.height-6);}
-      if(v>0&&barH>10){ctx.fillStyle='#fff';ctx.font='7px sans-serif';ctx.textAlign='center';
-        const vL=v>=1e6?(v/1e6).toFixed(1)+'jt':v>=1e3?(v/1e3).toFixed(0)+'k':''+v;ctx.fillText(vL,x+barW/2,canvas.height-24-barH+9);}
+      if(v>0&&barH>10){ctx.fillStyle='#fff';ctx.font='7px sans-serif';ctx.textAlign='center';const vL=v>=1e6?(v/1e6).toFixed(1)+'jt':v>=1e3?(v/1e3).toFixed(0)+'k':''+v;ctx.fillText(vL,x+barW/2,canvas.height-24-barH+9);}
     });
   },80);
 }
+function renderPerbandinganPeriode(mode){
+  const el=document.getElementById('grafikPerbandingan');if(!el)return;
+  const allTrx=_getTrxAll();const now=new Date();
+  let periodeA,periodeB,labelA,labelB;
+  if(mode==='perbulan'){
+    periodeA=allTrx.filter(t=>{const d=new Date(t.waktu);return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();}).reduce((s,t)=>s+t.total,0);
+    const bLalu=new Date(now.getFullYear(),now.getMonth()-1,1);
+    periodeB=allTrx.filter(t=>{const d=new Date(t.waktu);return d.getMonth()===bLalu.getMonth()&&d.getFullYear()===bLalu.getFullYear();}).reduce((s,t)=>s+t.total,0);
+    labelA='Bulan Ini';labelB='Bulan Lalu';
+  } else {
+    const startA=new Date(now);startA.setDate(now.getDate()-6);startA.setHours(0,0,0,0);
+    const startB=new Date(now);startB.setDate(now.getDate()-13);startB.setHours(0,0,0,0);
+    const endB=new Date(now);endB.setDate(now.getDate()-7);endB.setHours(23,59,59,999);
+    periodeA=allTrx.filter(t=>{const d=new Date(t.waktu);return d>=startA&&d<=now;}).reduce((s,t)=>s+t.total,0);
+    periodeB=allTrx.filter(t=>{const d=new Date(t.waktu);return d>=startB&&d<=endB;}).reduce((s,t)=>s+t.total,0);
+    labelA='7 Hari Ini';labelB='7 Hari Lalu';
+  }
+  const selisih=periodeA-periodeB;const pct=periodeB>0?Math.round((selisih/periodeB)*100):periodeA>0?100:0;const naik=selisih>=0;
+  el.innerHTML=`
+    <div style="flex:1;background:var(--card);border:1.5px solid var(--brd);border-radius:9px;padding:8px 10px;"><div style="font-size:10px;color:var(--gray)">${labelA}</div><div style="font-size:13px;font-weight:800;color:var(--g)">${fRp(periodeA)}</div></div>
+    <div style="flex:1;background:var(--card);border:1.5px solid var(--brd);border-radius:9px;padding:8px 10px;"><div style="font-size:10px;color:var(--gray)">${labelB}</div><div style="font-size:13px;font-weight:800;color:var(--gray)">${fRp(periodeB)}</div></div>
+    <div style="flex:1;background:${naik?'#dcfce7':'#fee2e2'};border:1.5px solid ${naik?'#86efac':'#fca5a5'};border-radius:9px;padding:8px 10px;text-align:center;"><div style="font-size:10px;color:var(--gray)">Perubahan</div><div style="font-size:13px;font-weight:800;color:${naik?'#16a34a':'#dc2626'}">${naik?'▲':'▼'} ${Math.abs(pct)}%</div></div>`;
+}
 function renderTop10Produk(){
-  const cm={};DB.transaksi.filter(t=>!t.void).forEach(t=>t.items.forEach(i=>{cm[i.nama]=(cm[i.nama]||0)+i.qty;}));
-  const top10=Object.entries(cm).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  const allTrx=_getTrxAll();
   const el=document.getElementById('top10ProdukList');if(!el)return;
-  if(!top10.length){el.innerHTML='<div class="empty-s" style="padding:12px"><p>Belum ada data</p></div>';return;}
-  const maxQ=top10[0][1];
   const gmC=getComputedStyle(document.documentElement).getPropertyValue('--gm').trim()||'#2d6a4f';
-  el.innerHTML=top10.map(([nm,qty],i)=>`<div class="tpl-item"><div class="tpl-item-row"><span class="tpl-nama">${i+1}. ${nm}</span><span class="tpl-qty">${qty}x</span></div><div class="tpl-bar"><div class="tpl-bar-fill" style="width:${Math.round(qty/maxQ*100)}%;background:${gmC}"></div></div></div>`).join('');
+  let top10;
+  if(_topMode==='omzet'){
+    const cm={};allTrx.forEach(t=>t.items.forEach(i=>{const h=i.hargaCustom!=null?i.hargaCustom:i.harga;cm[i.nama]=(cm[i.nama]||0)+(h*i.qty);}));
+    top10=Object.entries(cm).sort((a,b)=>b[1]-a[1]).slice(0,10);
+    if(!top10.length){el.innerHTML='<div class="empty-s" style="padding:12px"><p>Belum ada data</p></div>';return;}
+    const maxV=top10[0][1];
+    el.innerHTML=top10.map(([nm,omz],i)=>`<div class="tpl-item"><div class="tpl-item-row"><span class="tpl-nama">${i+1}. ${nm}</span><span class="tpl-qty" style="color:var(--gm)">${fRp(omz)}</span></div><div class="tpl-bar"><div class="tpl-bar-fill" style="width:${Math.round(omz/maxV*100)}%;background:${gmC}"></div></div></div>`).join('');
+  } else {
+    const cm={};allTrx.forEach(t=>t.items.forEach(i=>{cm[i.nama]=(cm[i.nama]||0)+i.qty;}));
+    top10=Object.entries(cm).sort((a,b)=>b[1]-a[1]).slice(0,10);
+    if(!top10.length){el.innerHTML='<div class="empty-s" style="padding:12px"><p>Belum ada data</p></div>';return;}
+    const maxQ=top10[0][1];
+    el.innerHTML=top10.map(([nm,qty],i)=>`<div class="tpl-item"><div class="tpl-item-row"><span class="tpl-nama">${i+1}. ${nm}</span><span class="tpl-qty">${qty}x</span></div><div class="tpl-bar"><div class="tpl-bar-fill" style="width:${Math.round(qty/maxQ*100)}%;background:${gmC}"></div></div></div>`).join('');
+  }
+}
+function renderOmzetPerKat(){
+  const el=document.getElementById('omzetPerKat');if(!el)return;
+  const allTrx=_getTrxAll();const cm={};
+  allTrx.forEach(t=>t.items.forEach(i=>{const p=DB.produk.find(x=>x.id===i.id);const kat=p?.kat||'Lainnya';const h=i.hargaCustom!=null?i.hargaCustom:i.harga;cm[kat]=(cm[kat]||0)+(h*i.qty);}));
+  const sorted=Object.entries(cm).sort((a,b)=>b[1]-a[1]);
+  if(!sorted.length){el.innerHTML='<div class="empty-s" style="padding:12px"><p>Belum ada data</p></div>';return;}
+  const maxV=sorted[0][1];const gmC=getComputedStyle(document.documentElement).getPropertyValue('--gm').trim()||'#2d6a4f';
+  el.innerHTML=sorted.map(([kat,omz])=>`<div class="tpl-item"><div class="tpl-item-row"><span class="tpl-nama">${kat}</span><span class="tpl-qty" style="color:var(--gm)">${fRp(omz)}</span></div><div class="tpl-bar"><div class="tpl-bar-fill" style="width:${Math.round(omz/maxV*100)}%;background:${gmC}aa"></div></div></div>`).join('');
+}
+function renderGrafikCustom(){
+  const dari=document.getElementById('grafikTglDari')?.value;const sampai=document.getElementById('grafikTglSampai')?.value;
+  const el=document.getElementById('grafikCustomResult');if(!el||!dari||!sampai)return;
+  if(sampai<dari){el.innerHTML='<span style="color:var(--r)">⚠ Tanggal akhir tidak boleh sebelum tanggal awal</span>';return;}
+  const allTrx=_getTrxAll();
+  const dariDate=new Date(dari);dariDate.setHours(0,0,0,0);
+  const sampaiDate=new Date(sampai);sampaiDate.setHours(23,59,59,999);
+  const filtered=allTrx.filter(t=>{const d=new Date(t.waktu);return d>=dariDate&&d<=sampaiDate;});
+  const omzet=filtered.reduce((s,t)=>s+t.total,0);
+  const laba=filtered.reduce((s,t)=>s+t.items.reduce((ss,i)=>{const p=DB.produk.find(x=>x.id===i.id);const h=i.hargaCustom!=null?i.hargaCustom:i.harga;return ss+(h-(p?.modal||0))*(i.qty||1);},0),0);
+  el.innerHTML=`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;"><div class="sc"><div class="sl">💰 Omzet</div><div class="sv">${fRp(omzet)}</div></div><div class="sc"><div class="sl">📈 Est. Laba</div><div class="sv">${fRp(laba)}</div></div><div class="sc"><div class="sl">🧾 Transaksi</div><div class="sv">${filtered.length}x</div></div></div>`;
+}
+function renderLaporanTargetBar(){
+  const el=document.getElementById('laporanTargetBar');if(!el)return;
+  const target=DB.settings?.targetOmzet||0;
+  const omzetHariIni=DB.transaksi.filter(t=>!t.void&&new Date(t.waktu).toDateString()===new Date().toDateString()).reduce((s,t)=>s+t.total,0);
+  if(!target){el.innerHTML='<div style="font-size:11px;color:var(--gray)">Belum ada target. Tap "Atur" untuk set target.</div>';return;}
+  const pct=Math.min(100,Math.round(omzetHariIni/target*100));const tercapai=omzetHariIni>=target;
+  el.innerHTML=`<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px;"><span style="font-weight:700">${fRp(omzetHariIni)}</span><span style="color:var(--gray)">target ${fRp(target)}</span></div><div style="background:var(--brd);border-radius:6px;height:10px;overflow:hidden;"><div style="height:100%;width:${pct}%;background:${tercapai?'#16a34a':'var(--gm)'};border-radius:6px;transition:width 0.5s;"></div></div><div style="font-size:10px;color:${tercapai?'#16a34a':'var(--gray)'};margin-top:4px;font-weight:700">${tercapai?'🎉 Target tercapai!':pct+'% tercapai · sisa '+fRp(target-omzetHariIni)}</div>`;
 }
 
 // PELANGGAN & POIN
@@ -292,6 +370,7 @@ function simpanAutoNotifWA(){
   const s=DB.settings||{};
   s.autoNotifWaPelanggan=document.getElementById('autoNotifWaToggle')?.checked||false;
   s.autoNotifWaOwner=document.getElementById('autoNotifOwnerToggle')?.checked||false;
+  s.notifWaAksiSensitif=document.getElementById('notifWaAksiSensitifToggle')?.checked||false;
   DB.settings=s;saveDB();
   showNotif('✅ Setting notif WA disimpan');
 }

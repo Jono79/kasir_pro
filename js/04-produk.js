@@ -469,6 +469,17 @@ function _simpanProdukEksekusi(id,nm){
       if(lama.nama!==data.nama)perubahan.push('nama "'+lama.nama+'"→"'+data.nama+'"');
       DB.produk[i]={...DB.produk[i],...data};
       catatLog('Edit Produk', nm+(perubahan.length?': '+perubahan.join(', '):' (tanpa perubahan nilai utama)'));
+      // Notif WA kalau harga berubah signifikan (>10%)
+      if(lama.harga>0&&data.harga>0){
+        const selisihPct=Math.abs(data.harga-lama.harga)/lama.harga*100;
+        if(selisihPct>=10){
+          notifWaOwnerAksi(
+            'PERUBAHAN HARGA PRODUK',
+            `Produk: ${nm}\nHarga lama: ${fRp(lama.harga)}\nHarga baru: ${fRp(data.harga)}\nSelisih: ${selisihPct.toFixed(0)}%`,
+            '💰'
+          );
+        }
+      }
     }
   }
   else{
@@ -482,6 +493,11 @@ function hapusProduk(id){
   const p=DB.produk.find(x=>x.id===id);
   konfirmasi('Hapus produk ini?',()=>{
     catatLog('Hapus Produk', (p?.nama||'ID:'+id)+' · stok terakhir '+(p?.stok??'-'));
+    notifWaOwnerAksi(
+      'PRODUK DIHAPUS',
+      `Produk: ${p?.nama||'ID:'+id}\nStok terakhir: ${p?.stok??'-'}\nHarga: ${fRp(p?.harga||0)}`,
+      '🗑'
+    );
     DB.produk=DB.produk.filter(x=>x.id!==id);saveDB();renderStok();renderKasir();showNotif('Produk dihapus');
   });
 }

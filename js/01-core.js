@@ -273,12 +273,40 @@ const TEMAS=[
   {nama:'Ungu',g:'#3b0764',gm:'#7c3aed',gl:'#a78bfa',gp:'#ede9fe',gf:'#f5f3ff'},
   {nama:'Merah',g:'#7f1d1d',gm:'#dc2626',gl:'#f87171',gp:'#fee2e2',gf:'#fff1f2'},
   {nama:'Coklat',g:'#451a03',gm:'#92400e',gl:'#d97706',gp:'#fff3e0',gf:'#fffbeb'},
+  {nama:'Pink',g:'#831843',gm:'#db2777',gl:'#f472b6',gp:'#fce7f3',gf:'#fdf2f8'},
+  {nama:'Teal',g:'#134e4a',gm:'#0d9488',gl:'#2dd4bf',gp:'#ccfbf1',gf:'#f0fdfa'},
+  {nama:'Navy',g:'#0c1445',gm:'#3730a3',gl:'#818cf8',gp:'#e0e7ff',gf:'#eef2ff'},
+  {nama:'Abu',g:'#1f2937',gm:'#374151',gl:'#9ca3af',gp:'#f3f4f6',gf:'#f9fafb'},
+  {nama:'Kuning',g:'#78350f',gm:'#b45309',gl:'#f59e0b',gp:'#fef3c7',gf:'#fffbeb'},
 ];
 const IKOS=['🛒','🏪','🏬','🍜','🥘','🍕','☕','🥤','🍦','🧃','🧹','💊','🌾','🥩','🐟'];
+
 function terapkanTema(t){
   const r=document.documentElement.style;
   r.setProperty('--g',t.g);r.setProperty('--gm',t.gm);r.setProperty('--gl',t.gl);r.setProperty('--gp',t.gp);r.setProperty('--gf',t.gf);
   const meta=document.getElementById('themeColorMeta');if(meta)meta.content=t.g;
+}
+
+// Tema custom dari color picker — generate seluruh palet dari 1 warna utama
+function _hexToHsl(hex){
+  let r=parseInt(hex.slice(1,3),16)/255,g=parseInt(hex.slice(3,5),16)/255,b=parseInt(hex.slice(5,7),16)/255;
+  const max=Math.max(r,g,b),min=Math.min(r,g,b);let h,s,l=(max+min)/2;
+  if(max===min){h=s=0;}else{const d=max-min;s=l>0.5?d/(2-max-min):d/(max+min);switch(max){case r:h=(g-b)/d+(g<b?6:0);break;case g:h=(b-r)/d+2;break;default:h=(r-g)/d+4;}h/=6;}
+  return [Math.round(h*360),Math.round(s*100),Math.round(l*100)];
+}
+function _hslToHex(h,s,l){s/=100;l/=100;const a=s*Math.min(l,1-l);const f=n=>{const k=(n+h/30)%12;const c=l-a*Math.max(Math.min(k-3,9-k,1),-1);return Math.round(255*c).toString(16).padStart(2,'0');};return '#'+f(0)+f(8)+f(4);}
+function terapkanWarnaCustom(hex){
+  const [h,s,l]=_hexToHsl(hex);
+  const tema={
+    nama:'Custom',
+    g:_hslToHex(h,Math.min(s+10,100),Math.max(l-20,10)),
+    gm:hex,
+    gl:_hslToHex(h,Math.max(s-10,20),Math.min(l+20,80)),
+    gp:_hslToHex(h,Math.max(s-30,10),Math.min(l+40,95)),
+    gf:_hslToHex(h,Math.max(s-40,5),Math.min(l+48,98)),
+  };
+  terapkanTema(tema);
+  DB.settings.tema='custom';DB.settings.temaCustom=hex;saveDB();
 }
 
 // ============= FORMAT =============
@@ -290,3 +318,46 @@ function fTglLengkap(d){return new Date(d).toLocaleDateString('id-ID',{weekday:'
 // ============= NOTIF =============
 function showNotif(msg,err=0){const n=document.getElementById('notif');n.textContent=msg;n.style.background=err?'#dc2626':'#2d6a4f';n.classList.add('show');setTimeout(()=>n.classList.remove('show'),2200);}
 
+
+// ============= OFFLINE QUEUE — v6 baru =============
+// Kalau internet mati saat checkout, transaksi masuk ke antrian offline.
+// Saat online lagi, sync otomatis — stok & laporan ter-update.
+// Catatan: karena app ini pakai localStorage (bukan server), "sync" di sini
+// artinya: data sudah tersimpan secara lokal (selalu, online/offline sama saja
+// karena tidak ada backend). Yang kita tambahkan di sini adalah:
+// 1. Indikator status koneksi yang jelas di layar
+// 2. "Queue" visual untuk transaksi yang dibuat saat offline (supaya kasir tahu)
+// 3. Peringatan saat struk WA gagal terkirim karena offline
+
+let _isOnline=navigator.onLine;
+let _offlineQueue=[];
+
+function _initOfflineMonitor(){
+  const banner=document.getElementById('offlineBanner');
+
+  function onOnline(){
+    _isOnline=true;
+    if(banner)banner.style.display='none';
+    if(_offlineQueue.length){
+      // Proses queue: semua transaksi sudah tersimpan lokal, ini hanya notif
+      showNotif('✅ Online kembali! '+_offlineQueue.length+' transaksi sudah tersimpan.');
+      _offlineQueue=[];
+    }
+  }
+  function onOffline(){
+    _isOnline=false;
+    if(banner)banner.style.display='flex';
+    showNotif('⚠️ Offline — transaksi tetap bisa dilakukan, tersimpan lokal',1);
+  }
+
+  window.addEventListener('online',onOnline);
+  window.addEventListener('offline',onOffline);
+  if(!navigator.onLine)onOffline();
+}
+
+function _catatTrxOffline(trxId){
+  if(!_isOnline){
+    _offlineQueue.push({id:trxId,waktu:new Date().toISOString()});
+    showNotif('💾 Offline — transaksi #'+trxId+' tersimpan lokal');
+  }
+}

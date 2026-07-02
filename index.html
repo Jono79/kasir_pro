@@ -2,19 +2,23 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#1b4332" id="themeColorMeta">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Kasir Pro">
 <link rel="manifest" href="manifest.json">
 <title>Kasir Warung Pro</title>
-<meta name="app-version" content="10.2.0">
+<meta name="app-version" content="10.5.0">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
 <!-- PWA Install Banner -->
+<!-- Offline Banner -->
+<div id="offlineBanner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:9999;background:#dc2626;color:#fff;padding:8px 14px;font-size:12px;font-weight:700;align-items:center;gap:8px;justify-content:center;">
+  📵 Mode Offline — Transaksi tetap berjalan & tersimpan di perangkat ini
+</div>
 <div class="pwa-banner" id="pwaBanner">
   <div><p>📱 Install Kasir Warung Pro</p><small>Bisa dipakai tanpa internet, tanpa Play Store!</small></div>
   <div class="pwa-btns">
@@ -176,6 +180,7 @@
             <button class="disc-quick-btn" onclick="setDiskonCepat(15)">15%</button>
             <button class="disc-quick-btn" onclick="setDiskonCepat(20)">20%</button>
             <button class="disc-quick-btn" onclick="setDiskonCepat(50)">50%</button>
+            <button class="disc-quick-btn" style="background:var(--o);color:#fff" onclick="bukaKalkDiskon()">🏷️</button>
           </div>
           <div class="diskon-info" id="diskonInfo" style="display:none"><span>Hemat</span><span id="diskonJml">Rp 0</span></div>
           <div class="ktotal-row"><span>Total Bayar</span><span id="totalDisp">Rp 0</span></div>
@@ -210,6 +215,7 @@
           <button class="btn-sec" onclick="goPage('opname',document.getElementById('mnuStok'))">📋 Opname</button>
           <button class="btn-sec" onclick="goPage('riwayatStok',document.getElementById('mnuStok'))">📜 Riwayat</button>
           <button class="btn-sec" onclick="eksporCSV()">⬇ CSV</button>
+          <button class="btn-sec" onclick="bukaBarcodeGenerator()">🔲 Barcode</button>
         </div>
         <!-- Search & Sort bar stok -->
         <div style="display:flex;gap:6px;padding:8px 10px;background:var(--w);border-bottom:1.5px solid var(--brd);align-items:center;flex-shrink:0;flex-wrap:wrap;">
@@ -361,6 +367,7 @@
         <div class="lap-toolbar">
           <h2>📊 Laporan</h2>
           <button class="btn-sec" onclick="eksporRekapWA()">📱</button>
+          <button class="btn-sec" onclick="eksporLaporanPDF()">📄 PDF</button>
           <button class="btn-sec" onclick="resetLaporan()">Reset</button>
         </div>
         <div class="tab-row">
@@ -386,17 +393,55 @@
         <div id="lapArsip" style="display:none;flex:1;overflow-y:auto;" class="rw-list"></div>
         <div id="lapLabaRugi" style="display:none;flex:1;overflow-y:auto;padding:10px;"></div>
         <div id="lapGrafik" style="display:none;flex:1;overflow-y:auto;padding:10px;">
+          <!-- Target omzet progress bar -->
+          <div id="targetProgressWrap" style="background:var(--card);border:1.5px solid var(--brd);border-radius:11px;padding:12px 14px;margin-bottom:10px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+              <span style="font-size:12px;font-weight:800;">🎯 Target Omzet Hari Ini</span>
+              <button onclick="bukaM('mTarget')" style="font-size:10px;padding:3px 8px;border:1.5px solid var(--g);border-radius:6px;background:transparent;color:var(--g);font-weight:700;">Atur</button>
+            </div>
+            <div id="laporanTargetBar"></div>
+          </div>
+
+          <!-- Filter tanggal custom -->
+          <div style="background:var(--card);border:1.5px solid var(--brd);border-radius:11px;padding:10px 14px;margin-bottom:10px;">
+            <div style="font-size:11px;font-weight:800;color:var(--txt);margin-bottom:8px;">📅 Filter Tanggal</div>
+            <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+              <input type="date" id="grafikTglDari" onchange="renderGrafikCustom()" style="flex:1;padding:6px;border:1.5px solid var(--brd);border-radius:7px;background:var(--inp);color:var(--txt);font-size:11px;">
+              <span style="font-size:11px;color:var(--gray)">s/d</span>
+              <input type="date" id="grafikTglSampai" onchange="renderGrafikCustom()" style="flex:1;padding:6px;border:1.5px solid var(--brd);border-radius:7px;background:var(--inp);color:var(--txt);font-size:11px;">
+            </div>
+            <div id="grafikCustomResult" style="margin-top:8px;font-size:11px;color:var(--gray)">Pilih rentang tanggal untuk melihat laporan custom</div>
+          </div>
+
+          <!-- Grafik omzet periode -->
           <div class="grafik-wrap" style="margin:0 0 10px;">
             <div class="grafik-tabs">
-              <button class="grafik-tab active" onclick="switchGrafikMode('mingguan',this)">Mingguan</button>
-              <button class="grafik-tab" onclick="switchGrafikMode('bulanan',this)">Bulanan</button>
+              <button class="grafik-tab active" onclick="switchGrafikMode('mingguan',this)">7 Hari</button>
+              <button class="grafik-tab" onclick="switchGrafikMode('bulanan',this)">30 Hari</button>
+              <button class="grafik-tab" onclick="switchGrafikMode('perbulan',this)">Per Bulan</button>
             </div>
             <h4 id="grafikPeriodTitle">📅 Omzet 7 Hari Terakhir</h4>
             <canvas id="grafikPeriod" height="120"></canvas>
+            <!-- Perbandingan periode -->
+            <div id="grafikPerbandingan" style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;"></div>
           </div>
+
+          <!-- Top produk: tab qty vs omzet -->
           <div style="background:var(--card);border:1.5px solid var(--brd);border-radius:11px;overflow:hidden;margin-bottom:10px;">
-            <div style="background:var(--g);color:#fff;padding:9px 14px;font-size:12px;font-weight:800;">🏆 Top 10 Produk Terlaris</div>
+            <div style="background:var(--g);color:#fff;padding:9px 14px;display:flex;justify-content:space-between;align-items:center;">
+              <span style="font-size:12px;font-weight:800;">🏆 Produk Terlaris</span>
+              <div style="display:flex;gap:4px;">
+                <button id="topModeQty" onclick="switchTopMode('qty',this)" style="font-size:10px;padding:2px 8px;border-radius:5px;border:1.5px solid #fff;background:#fff;color:var(--g);font-weight:700;">Qty</button>
+                <button id="topModeOmzet" onclick="switchTopMode('omzet',this)" style="font-size:10px;padding:2px 8px;border-radius:5px;border:1.5px solid rgba(255,255,255,0.5);background:transparent;color:#fff;font-weight:700;">Omzet</button>
+              </div>
+            </div>
             <div id="top10ProdukList"></div>
+          </div>
+
+          <!-- Performa per kategori -->
+          <div style="background:var(--card);border:1.5px solid var(--brd);border-radius:11px;overflow:hidden;margin-bottom:10px;">
+            <div style="background:var(--g);color:#fff;padding:9px 14px;font-size:12px;font-weight:800;">📂 Omzet Per Kategori</div>
+            <div id="omzetPerKat"></div>
           </div>
         </div>
       </div>
@@ -558,7 +603,11 @@
               <span class="jadwal-label">Kirim Notif ke Owner (setiap transaksi)</span>
               <label class="toggle-sw"><input type="checkbox" id="autoNotifOwnerToggle" onchange="simpanAutoNotifWA()"><span class="slider"></span></label>
             </div>
-            <div style="font-size:10px;color:var(--gray);margin-top:4px;line-height:1.6">⚠️ WA akan terbuka otomatis di tab baru saat transaksi selesai. Pastikan nomor WA owner sudah diisi di atas.</div>
+            <div class="jadwal-row" style="background:rgba(220,38,38,0.06);border-radius:8px;padding:6px 8px;margin-top:4px;">
+              <span class="jadwal-label" style="font-weight:700;">⚠️ Notif Aksi Sensitif ke Owner</span>
+              <label class="toggle-sw"><input type="checkbox" id="notifWaAksiSensitifToggle" onchange="simpanAutoNotifWA()"><span class="slider"></span></label>
+            </div>
+            <div style="font-size:10px;color:var(--gray);margin-top:4px;line-height:1.6">Notif aksi sensitif mencakup: void transaksi 🚫 · hapus produk 🗑 · perubahan harga >10% 💰 · diskon >30% 🏷️ · hapus pengguna 👤 · PIN salah 3x 🔑. WA owner wajib diisi di atas.</div>
           </div>
           <div class="sett-sec">
             <h3>💰 Pengaturan Poin Reward</h3>
@@ -661,6 +710,50 @@
   <div class="berat-cepat" id="beratCepat"></div>
   <div class="hasil-box"><div class="hl">💰 Total Harga</div><div class="hv" id="hasilHarga">Rp 0</div><div class="hd" id="hasilDetail">-</div></div>
   <div class="macts"><button class="bcan" onclick="tutupM('mTimbang')">Batal</button><button class="bsav bsav-tim" onclick="addTimbang()">+ Keranjang</button></div>
+</div></div>
+
+<!-- KALKULATOR DISKON -->
+<div class="mov" id="mKalkDiskon"><div class="modal">
+  <h3>🏷️ Kalkulator Diskon</h3>
+  <div class="fg">
+    <label>Harga Normal / Harga Coret (Rp)</label>
+    <input type="number" id="kdHargaNormal" placeholder="Contoh: 50000" oninput="hitungKalkDiskon()">
+  </div>
+  <div style="display:flex;gap:8px;margin-bottom:4px;">
+    <div class="fg" style="flex:1">
+      <label>Diskon (%)</label>
+      <input type="number" id="kdDiskonPct" placeholder="Contoh: 20" min="0" max="100" oninput="hitungKalkDiskonDariPct()">
+    </div>
+    <div class="fg" style="flex:1">
+      <label>atau Harga Promo (Rp)</label>
+      <input type="number" id="kdHargaPromo" placeholder="Contoh: 40000" oninput="hitungKalkDiskonDariHarga()">
+    </div>
+  </div>
+  <!-- Hasil -->
+  <div id="kdHasil" style="background:var(--gl2);border-radius:10px;padding:12px 14px;margin:8px 0;display:none;">
+    <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+      <span style="font-size:11px;color:var(--gray)">Harga Normal</span>
+      <span id="kdHasilNormal" style="font-size:12px;font-weight:700;text-decoration:line-through;color:var(--gray)"></span>
+    </div>
+    <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+      <span style="font-size:11px;color:var(--gray)">Diskon</span>
+      <span id="kdHasilDiskon" style="font-size:12px;font-weight:700;color:var(--r)"></span>
+    </div>
+    <div style="display:flex;justify-content:space-between;">
+      <span style="font-size:13px;font-weight:800;">Harga Promo</span>
+      <span id="kdHasilPromo" style="font-size:15px;font-weight:900;color:var(--gm)"></span>
+    </div>
+  </div>
+  <div class="fg">
+    <label>Terapkan ke produk di keranjang (opsional)</label>
+    <select id="kdProdukKeranjang">
+      <option value="">-- Tidak perlu, hanya hitung saja --</option>
+    </select>
+  </div>
+  <div class="macts">
+    <button class="bcan" onclick="tutupM('mKalkDiskon')">Tutup</button>
+    <button class="bsav" onclick="terapkanKalkDiskon()">✅ Terapkan ke Keranjang</button>
+  </div>
 </div></div>
 
 <div class="mov" id="mBayar"><div class="modal">
@@ -1109,6 +1202,60 @@
 <!-- PRINT AREA (hidden, for thermal print) -->
 <div class="print-area" id="printArea"></div>
 
+<!-- BARCODE GENERATOR MODAL -->
+<div class="mov" id="mBarcode"><div class="modal">
+  <h3>🔲 Generator Label Barcode</h3>
+  <div class="fg">
+    <label>Pilih Produk</label>
+    <select id="bcProdukSel" onchange="previewBarcode()">
+      <option value="">-- Pilih Produk --</option>
+    </select>
+  </div>
+  <div class="fg">
+    <label>Kode Barcode (manual / otomatis)</label>
+    <input id="bcKode" placeholder="Kosongkan untuk pakai ID produk" oninput="previewBarcode()">
+  </div>
+  <div class="fg">
+    <label>Nama Label (opsional)</label>
+    <input id="bcNama" placeholder="Nama yang tampil di label">
+  </div>
+  <div class="fg">
+    <label>Harga di Label</label>
+    <input type="number" id="bcHarga" placeholder="0">
+  </div>
+  <div class="fg">
+    <label>Jumlah Label</label>
+    <input type="number" id="bcJumlah" value="1" min="1" max="50">
+  </div>
+  <!-- Preview -->
+  <div id="bcPreviewWrap" style="background:var(--gl2);border-radius:8px;padding:12px;text-align:center;margin:8px 0;display:none;">
+    <svg id="bcPreviewSvg"></svg>
+    <div id="bcPreviewNama" style="font-size:11px;font-weight:700;margin-top:4px;"></div>
+    <div id="bcPreviewHarga" style="font-size:12px;color:var(--gm);font-weight:800;"></div>
+  </div>
+  <div id="bcErr" style="color:var(--r);font-size:11px;display:none;">⚠ Kode tidak valid untuk barcode</div>
+  <div class="macts">
+    <button class="bcan" onclick="tutupM('mBarcode')">Batal</button>
+    <button class="bsav" onclick="cetakLabelBarcode()">🖨 Cetak Label</button>
+  </div>
+</div></div>
+
+<!-- Print area untuk label barcode -->
+<div id="bcPrintArea" style="display:none"></div>
+
+<!-- JsBarcode dari CDN — dimuat lazy saat pertama kali dibutuhkan -->
+<script>
+window._jsBarcodeLoaded=false;
+function _loadJsBarcode(cb){
+  if(window._jsBarcodeLoaded&&window.JsBarcode){cb&&cb();return;}
+  const s=document.createElement('script');
+  s.src='https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.6/JsBarcode.all.min.js';
+  s.onload=()=>{window._jsBarcodeLoaded=true;cb&&cb();};
+  s.onerror=()=>showNotif('Gagal load library barcode. Cek koneksi internet.',1);
+  document.head.appendChild(s);
+}
+</script>
+
 <audio id="beepOk" preload="auto"></audio>
 <script src="js/01-core.js"></script>
 <script src="js/02-auth.js"></script>
@@ -1122,5 +1269,7 @@
 <script src="js/10-fitur-v4.js"></script>
 <script src="js/11-override-transaksi.js"></script>
 <script src="js/12-fitur-v5.js"></script>
+<script src="js/13-barcode.js"></script>
+<script src="js/14-pdf.js"></script>
 </body>
 </html>

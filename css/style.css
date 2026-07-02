@@ -657,3 +657,134 @@ canvas{width:100%;display:block;}
 .cabang-card{background:var(--card);border:1.5px solid var(--brd);border-radius:11px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;gap:10px;}
 .cabang-ico{width:42px;height:42px;border-radius:12px;background:var(--gp);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;}
 .cabang-aktif{border-color:var(--gm);background:var(--gf);}
+
+/* ============================================================
+   RESPONSIVE — TABLET, LAPTOP, DAN ROTASI — v6 baru
+   ============================================================
+   Breakdown:
+   - < 600px   : HP portrait (default, sudah ada)
+   - 600–959px : HP landscape / tablet kecil
+   - 960–1279px: Tablet / iPad
+   - 1280px+   : Laptop / desktop
+   ============================================================ */
+
+/* ---- HP Landscape (600px+) ---- */
+@media (min-width:600px){
+  /* Sidebar selalu terlihat sebagian di landscape */
+  .app-wrap{flex-direction:row;}
+  .sidebar{
+    position:relative;
+    width:200px;
+    transform:none!important;
+    box-shadow:none;
+    border-right:1.5px solid var(--brd);
+    height:100vh;
+    top:0;
+  }
+  .overlay{display:none!important;}
+  .ham-btn{display:none!important;}
+  .topbar{padding-left:12px;}
+  /* Kasir: tampilkan produk kiri, keranjang kanan */
+  #page-kasir .kasir-wrap{
+    display:flex;
+    flex-direction:row;
+    height:100%;
+    overflow:hidden;
+  }
+  #page-kasir .kasir-left{
+    flex:1;
+    overflow-y:auto;
+    border-right:1.5px solid var(--brd);
+  }
+  /* Bottom sheet keranjang jadi panel kanan di tablet */
+  .bottom-sheet{
+    position:relative!important;
+    transform:none!important;
+    width:320px!important;
+    max-height:100%!important;
+    height:100%!important;
+    border-radius:0!important;
+    border-left:1.5px solid var(--brd);
+    box-shadow:none!important;
+    background:var(--w)!important;
+    display:flex!important;
+    flex-direction:column;
+  }
+  .bottom-sheet-drag{display:none;}
+  /* FAB keranjang disembunyikan karena keranjang selalu terlihat */
+  #fabKeranjang{display:none!important;}
+  /* Modal lebih besar */
+  .modal{max-width:500px;}
+  /* Grid produk 2 kolom */
+  .pgrid{gap:0;}
+}
+
+/* ---- Tablet (960px+) ---- */
+@media (min-width:960px){
+  .sidebar{width:220px;}
+  .modal{max-width:560px;}
+  .bottom-sheet{width:360px!important;}
+  /* Laporan: kartu statistik 4 kolom */
+  .lap-stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+  /* Pengaturan: 2 kolom */
+  .sett-body{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .sett-sec{margin-bottom:0;}
+}
+
+/* ---- Laptop / Desktop (1280px+) ---- */
+@media (min-width:1280px){
+  .sidebar{width:240px;}
+  .bottom-sheet{width:400px!important;}
+  .modal{max-width:600px;}
+  /* Kasir: lebih lega */
+  #page-kasir .kasir-wrap{gap:0;}
+  /* Grafik lebih besar */
+  #grafikPeriod{height:160px!important;}
+  /* Stok & produk: 2 kolom card */
+  body{font-size:14px;}
+}
+
+/* ---- Orientasi landscape untuk HP kecil (< 600px landscape) ---- */
+@media (max-width:599px) and (orientation:landscape){
+  .topbar{padding:4px 10px;}
+  .topbar h1{font-size:13px;}
+  .bottom-sheet{max-height:95vh!important;}
+  .fav-bar{padding:4px 10px;}
+  /* Kurangi padding agar muat di layar kecil landscape */
+  .pcard{padding:6px 8px;}
+  .modal{max-height:95vh;}
+  /* Login screen lebih compact */
+  .lcard{padding:16px;}
+}
+
+/* ---- Orientasi portrait paksa untuk modal (jangan rotate) ---- */
+/* Tidak perlu — kita justru DUKUNG semua orientasi */
+
+/* ---- Touch target lebih besar di tablet ---- */
+@media (min-width:600px){
+  .sb-item{padding:10px 14px;font-size:13px;}
+  .btn-p,.btn-sec{padding:9px 14px;}
+  .padd{width:34px;height:34px;font-size:18px;}
+  .pcard{padding:10px 12px;}
+  .pn{font-size:13px;}
+  /* Header fixed di desktop */
+  .topbar{position:sticky;top:0;z-index:100;}
+}
+
+/* ---- Scroll bar lebih cantik di desktop ---- */
+@media (min-width:960px){
+  ::-webkit-scrollbar{width:6px;height:6px;}
+  ::-webkit-scrollbar-track{background:var(--gl2);}
+  ::-webkit-scrollbar-thumb{background:var(--brd);border-radius:3px;}
+  ::-webkit-scrollbar-thumb:hover{background:var(--gl);}
+}
+
+/* ---- Hover effect di desktop (tidak ada di HP) ---- */
+@media (hover:hover){
+  .pcard:hover{background:var(--gf);transform:translateX(2px);transition:all 0.15s;}
+  .sb-item:hover{background:rgba(255,255,255,0.12);}
+  .btn-p:hover{opacity:0.88;}
+  .btn-sec:hover{background:var(--gp);}
+  .bsav:hover{opacity:0.88;}
+  .bcan:hover{background:var(--gl2);}
+}

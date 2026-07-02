@@ -1,6 +1,6 @@
 // ============= AUTH =============
 let me=null;
-function initApp(){renderLoginUsers();}
+function initApp(){renderLoginUsers();_initOfflineMonitor();}
 function renderLoginUsers(){
   const s=DB.settings||{};
   if(s.logoUrl){
@@ -41,8 +41,22 @@ function doLogin(){
     if(st.count>=5){
       st.lockUntil=Date.now()+30000;st.count=0;
       document.getElementById('lerr').textContent='🔒 Terlalu banyak PIN salah. Coba lagi dalam 30 detik';
+      // Notif WA kalau sampai dikunci (5x salah)
+      notifWaOwnerAksi(
+        'LOGIN MENCURIGAKAN — DIKUNCI',
+        `Akun: ${u.nama}\n5x PIN salah → akun dikunci 30 detik\nWaspada akses tidak sah!`,
+        '🔐'
+      );
     }else{
       document.getElementById('lerr').textContent='PIN salah ('+st.count+'/5)';
+      // Notif WA mulai dari percobaan ke-3
+      if(st.count===3){
+        notifWaOwnerAksi(
+          'PIN SALAH BERULANG',
+          `Akun: ${u.nama}\nSudah 3x PIN salah berturut-turut`,
+          '🔑'
+        );
+      }
     }
     _loginFailMap[u.id]=st;
     document.getElementById('pinInput').value='';
@@ -86,7 +100,8 @@ function applySettings(){
   }else{
     document.getElementById('topLogo').textContent=s.logo||'🛒';
   }
-  if(s.tema!=null&&TEMAS[s.tema])terapkanTema(TEMAS[s.tema]);
+  if(s.tema==='custom'&&s.temaCustom){terapkanWarnaCustom(s.temaCustom);}
+  else if(s.tema!=null&&TEMAS[s.tema])terapkanTema(TEMAS[s.tema]);
   if(s.dark)document.body.classList.add('dark');
   else document.body.classList.remove('dark');
   if(s.logoUrl){
@@ -125,7 +140,19 @@ function renderSett(){
   // Iko grid
   document.getElementById('ikoGrid').innerHTML=IKOS.map(i=>`<button onclick="pilihIko('${i}')" style="font-size:22px;background:${s.logo===i?'var(--gp)':'var(--gl2)'};border:2px solid ${s.logo===i?'var(--gl)':'var(--brd)'};border-radius:8px;padding:5px 8px;cursor:pointer;">${i}</button>`).join('');
   // Warna grid
-  document.getElementById('colorGrid').innerHTML=TEMAS.map((t,i)=>`<button onclick="pilihTema(${i})" style="width:32px;height:32px;border-radius:50%;background:${t.gm};border:3px solid ${(s.tema===i)?'#fff':'transparent'};outline:2px solid ${(s.tema===i)?t.gm:'transparent'};cursor:pointer;"></button>`).join('');
+  const colorGrid=document.getElementById("colorGrid");
+  if(colorGrid){
+    const curTema=s.tema;
+    const curCustom=s.temaCustom||"#2d6a4f";
+  const colorGrid=document.getElementById('colorGrid');
+  if(colorGrid){
+    const curTema=s.tema;
+    const curCustom=s.temaCustom||'#2d6a4f';
+    colorGrid.style.cssText='display:flex;flex-wrap:wrap;gap:6px;padding:6px 0;';
+    colorGrid.innerHTML=TEMAS.map((t,i)=>`<div style="text-align:center;cursor:pointer" onclick="pilihTema(${i})"><div style="width:32px;height:32px;border-radius:50%;background:${t.gm};border:3px solid ${curTema===i?'#fff':'transparent'};outline:2px solid ${curTema===i?t.gm:'transparent'};margin:0 auto;"></div><div style="font-size:9px;color:var(--gray);margin-top:2px">${t.nama}</div></div>`).join('')+
+    `<div style="text-align:center"><label style="cursor:pointer" title="Pilih warna sendiri"><div style="width:32px;height:32px;border-radius:50%;background:conic-gradient(red,yellow,lime,cyan,blue,magenta,red);border:3px solid ${curTema==='custom'?'#fff':'transparent'};outline:2px solid ${curTema==='custom'?curCustom:'transparent'};margin:0 auto;display:flex;align-items:center;justify-content:center;font-size:16px;">🎨</div><div style="font-size:9px;color:var(--gray);margin-top:2px">Custom</div><input type="color" id="customColorPicker" value="${curCustom}" onchange="terapkanWarnaCustom(this.value)" style="opacity:0;width:0;height:0;position:absolute;"></label></div>`;
+  }
+  }
   // Kategori chips
   document.getElementById('katChips').innerHTML=(DB.kategori||[]).map(k=>`<div class="kchip">${k}<button onclick="hapusKat('${k}')">×</button></div>`).join('');
   // User list
@@ -186,6 +213,11 @@ function hapusUser(i){
   if(DB.users.length<=1){showNotif('Min. 1 pengguna',1);return;}
   const u=DB.users[i];
   catatLog('Hapus Pengguna', u?.nama||'(tidak diketahui)');
+  notifWaOwnerAksi(
+    'PENGGUNA DIHAPUS',
+    `Nama: ${u?.nama||'-'}\nRole: ${u?.role==='owner'?'Pemilik':u?.role==='stok'?'Manajer Stok':'Kasir'}`,
+    '👤'
+  );
   DB.users.splice(i,1);saveDB();renderSett();
 }
 

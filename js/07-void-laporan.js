@@ -24,6 +24,11 @@ function prosesVoid(){
   // Kembalikan stok
   t.items.forEach(it=>{const p=DB.produk.find(x=>x.id===it.id);if(p&&!it.timbang&&p.stok!==999){p.stok+=it.qty;DB.riwayatStok.push({waktu:new Date().toISOString(),produkId:p.id,nama:p.nama,jenis:'masuk',qty:it.qty,stokAwal:p.stok-it.qty,stokAkhir:p.stok,ref:'Void'});}});
   catatLog('Void Transaksi', 'Transaksi #'+t.id+' (total '+fRp(t.total)+') dibatalkan. Alasan: '+alasan);
+  notifWaOwnerAksi(
+    'VOID TRANSAKSI',
+    `ID: #${t.id}\nTotal: ${fRp(t.total)}\nAlasan: ${alasan}`,
+    '🚫'
+  );
   saveDB();tutupM('mVoid');
   try{ renderLaporan(); }catch(e){ /* halaman laporan mungkin tidak terlihat untuk kasir, abaikan */ }
   try{ renderProduk(); }catch(e){}
@@ -43,7 +48,19 @@ function switchLapTab(tab,btn){
   document.getElementById('lapGrafik').style.display=tab==='grafik'?'block':'none';
   if(tab==='arsip')renderArsip();
   else if(tab==='labarugi')renderLabaRugi();
-  else if(tab==='grafik'){renderGrafikPeriod('mingguan');renderTop10Produk();}
+  else if(tab==='grafik'){
+    renderGrafikPeriod(_grafikMode||'mingguan');
+    renderTop10Produk();
+    renderOmzetPerKat();
+    renderPerbandinganPeriode(_grafikMode||'mingguan');
+    renderLaporanTargetBar();
+    // Set tanggal default untuk filter custom (hari ini)
+    const today=new Date().toISOString().slice(0,10);
+    const dari=document.getElementById('grafikTglDari');
+    const sampai=document.getElementById('grafikTglSampai');
+    if(dari&&!dari.value)dari.value=today;
+    if(sampai&&!sampai.value)sampai.value=today;
+  }
   else renderLaporan();
 }
 function setLapPeriod(p,btn){

@@ -26,7 +26,9 @@ const PRECACHE_URLS = [
   './js/09-backup-update.js',
   './js/10-fitur-v4.js',
   './js/11-override-transaksi.js',
-  './js/12-fitur-v5.js'
+  './js/12-fitur-v5.js',
+  './js/13-barcode.js',
+  './js/14-pdf.js'
 ];
 
 self.addEventListener('install', (event) => {
